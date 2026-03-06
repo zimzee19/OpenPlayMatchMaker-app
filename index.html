@@ -20,6 +20,7 @@
         ul { list-style: none; padding: 0; margin: 0; }
         li { background: #334155; padding: 10px 12px; margin-bottom: 8px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; }
         .court-slot { color: var(--accent); text-decoration: underline; cursor: pointer; font-weight: bold; padding: 4px; }
+        .streak-tag { font-size: 0.7rem; background: #0f172a; color: var(--warn); padding: 2px 5px; border-radius: 4px; margin-left: 5px; vertical-align: middle; }
         .del-btn { background: var(--lose); color: white; padding: 8px 12px; font-size: 1rem; border-radius: 6px; border: none; }
         .score-btn { background: var(--warn); color: #000; padding: 4px 8px; font-size: 0.7rem; border-radius: 4px; border: none; font-weight: bold; margin-left: 10px; }
         .hist-item { background: #1a2233; border-left: 4px solid var(--accent); padding: 10px; margin-bottom: 10px; border-radius: 6px; font-size: 0.9rem; }
@@ -67,17 +68,17 @@
                 <div class="match-area">
                     <div id="courtDisplay" style="display:none;">
                         <div><b>Team 1</b><br>
-                            <span class="court-slot" onclick="openSwapModal(0)" id="p1"></span> & 
-                            <span class="court-slot" onclick="openSwapModal(1)" id="p2"></span>
+                            <span onclick="openSwapModal(0)"><span class="court-slot" id="p1"></span><span id="s1t" class="streak-tag"></span></span> & 
+                            <span onclick="openSwapModal(1)"><span class="court-slot" id="p2"></span><span id="s2t" class="streak-tag"></span></span>
                         </div>
                         <div style="margin: 10px 0; color: #64748b; font-weight: bold;">VS</div>
                         <div style="margin-bottom:15px;"><b>Team 2</b><br>
-                            <span class="court-slot" onclick="openSwapModal(2)" id="p3"></span> & 
-                            <span class="court-slot" onclick="openSwapModal(3)" id="p4"></span>
+                            <span onclick="openSwapModal(2)"><span class="court-slot" id="p3"></span><span id="s3t" class="streak-tag"></span></span> & 
+                            <span onclick="openSwapModal(3)"><span class="court-slot" id="p4"></span><span id="s4t" class="streak-tag"></span></span>
                         </div>
                         <div style="margin-bottom: 20px; display: flex; justify-content: center; gap: 15px;">
-                            <input type="number" id="s1" placeholder="Sc 1" style="width: 75px; text-align: center;">
-                            <input type="number" id="s2" placeholder="Sc 2" style="width: 75px; text-align: center;">
+                            <input type="number" id="sc1" placeholder="Sc 1" style="width: 75px; text-align: center;">
+                            <input type="number" id="sc2" placeholder="Sc 2" style="width: 75px; text-align: center;">
                         </div>
                         <button id="submitBtn" style="width:100%;">SUBMIT SCORE</button>
                     </div>
@@ -109,15 +110,30 @@
     let players = [], queue = [], currentWinners = [], streaks = {}, currentMatch = [], isLive = false, matchCounter = 0, winCount = {}, lossCount = {}, historyLog = [], isCourtOccupied = false, fullSnapshot = null, activeSwapIndex = null;
 
     function save() {
-        localStorage.setItem('pb_match_v7', JSON.stringify({ players, queue, currentWinners, streaks, currentMatch, isLive, matchCounter, winCount, lossCount, historyLog, isCourtOccupied, fullSnapshot }));
+        localStorage.setItem('pb_match_v9', JSON.stringify({ players, queue, currentWinners, streaks, currentMatch, isLive, matchCounter, winCount, lossCount, historyLog, isCourtOccupied, fullSnapshot }));
     }
 
     function load() {
-        const data = JSON.parse(localStorage.getItem('pb_match_v7'));
+        const data = JSON.parse(localStorage.getItem('pb_match_v9'));
         if (data) {
-            Object.assign(window, data);
+            applyState(data);
             renderAll();
         }
+    }
+
+    function applyState(data) {
+        players = data.players || [];
+        queue = data.queue || [];
+        currentWinners = data.currentWinners || [];
+        streaks = data.streaks || {};
+        currentMatch = data.currentMatch || [];
+        isLive = data.isLive || false;
+        matchCounter = data.matchCounter || 0;
+        winCount = data.winCount || {};
+        lossCount = data.lossCount || {};
+        historyLog = data.historyLog || [];
+        isCourtOccupied = data.isCourtOccupied || false;
+        fullSnapshot = data.fullSnapshot || null;
     }
 
     function renderAll() {
@@ -133,7 +149,12 @@
     function showCourt() {
         document.getElementById('courtDisplay').style.display = 'block';
         document.getElementById('idleDisplay').style.display = 'none';
-        ['p1','p2','p3','p4'].forEach((id, i) => document.getElementById(id).textContent = currentMatch[i]);
+        ['p1','p2','p3','p4'].forEach((id, i) => {
+            const name = currentMatch[i];
+            document.getElementById(id).textContent = name;
+            const streak = streaks[name] || 0;
+            document.getElementById(`s${i+1}t`).textContent = streak > 0 ? `🔥 ${streak}` : '';
+        });
         isCourtOccupied = true;
     }
 
@@ -148,7 +169,7 @@
     }
 
     function updateQueueUI() {
-        document.getElementById('qList').innerHTML = queue.map((p, i) => `<li draggable="true" ondragstart="draggedIdx=${i}" ondragover="event.preventDefault()" ondrop="dropItem(${i})"><span>${i+1}. ${p}</span><button class="del-btn" onclick="removePlayer('${p}')">×</button></li>`).join('');
+        document.getElementById('qList').innerHTML = queue.map((p, i) => `<li><span>${i+1}. ${p}</span><button class="del-btn" onclick="removePlayer('${p}')">×</button></li>`).join('');
     }
 
     function renderHistory() {
@@ -160,19 +181,12 @@
             </div>`).join('');
     }
 
-    let draggedIdx = null;
-    function dropItem(toIdx) {
-        const item = queue.splice(draggedIdx, 1)[0];
-        queue.splice(toIdx, 0, item);
-        updateQueueUI(); save();
-    }
-
     function openSwapModal(idx) {
         activeSwapIndex = idx;
         const select = document.getElementById('swapSelect');
         select.innerHTML = '';
-        currentMatch.forEach((p, i) => { if(i !== idx) select.innerHTML += `<option value="${p}">${p} (Switch Team)</option>`; });
-        queue.forEach(p => { select.innerHTML += `<option value="${p}">${p} (From Queue)</option>`; });
+        currentMatch.forEach((p, i) => { if(i !== idx) select.innerHTML += `<option value="${p}">${p} (Switch Positions)</option>`; });
+        queue.forEach(p => { select.innerHTML += `<option value="${p}">${p} (Queue Slot)</option>`; });
         document.getElementById('swapTitle').textContent = `Replace ${currentMatch[idx]}`;
         document.getElementById('swapModal').style.display = 'flex';
     }
@@ -190,23 +204,18 @@
             queue = queue.filter(p => p !== newVal);
             queue.unshift(oldVal);
             currentMatch[activeSwapIndex] = newVal;
+            // Substitution resets streak for the person leaving
+            delete streaks[oldVal];
         }
         closeSwapModal(); renderAll(); save();
     };
 
-    function processResult(s1, s2, matchToProcess, isUndoable = true) {
-        // Create a deep snapshot BEFORE state changes
-        if (isUndoable) {
+    function processResult(s1, s2, matchToProcess, captureSnap = true) {
+        if (captureSnap) {
             fullSnapshot = JSON.stringify({ 
-                queue: [...queue], 
-                streaks: {...streaks}, 
-                currentWinners: [...currentWinners], 
-                winCount: {...winCount}, 
-                lossCount: {...lossCount}, 
-                historyLog: [...historyLog], 
-                matchCounter, 
-                currentMatch: [...matchToProcess], 
-                isCourtOccupied 
+                queue: [...queue], streaks: {...streaks}, currentWinners: [...currentWinners], 
+                winCount: {...winCount}, lossCount: {...lossCount}, historyLog: [...historyLog], 
+                matchCounter, currentMatch: [...matchToProcess], isCourtOccupied 
             });
         }
         
@@ -219,9 +228,19 @@
         matchCounter++;
         historyLog.unshift({ num: matchCounter, s1, s2, t1, t2 });
         
-        lose.forEach(p => queue.push(p));
-        currentWinners = win;
-        currentWinners.forEach(p => streaks[p] = (streaks[p] || 0) + 1);
+        lose.forEach(p => { queue.push(p); delete streaks[p]; });
+        
+        currentWinners = [];
+        win.forEach(p => {
+            let s = (streaks[p] || 0) + 1;
+            if (s >= 2) {
+                queue.push(p);
+                delete streaks[p];
+            } else {
+                currentWinners.push(p);
+                streaks[p] = s;
+            }
+        });
         
         currentMatch = []; showIdle();
     }
@@ -233,53 +252,40 @@
         if (nS1 === null || nS2 === null) return;
         const s1 = parseInt(nS1), s2 = parseInt(nS2);
 
-        // If winner stays the same, just update history text
         if ((m.s1 > m.s2) === (s1 > s2)) { 
             m.s1 = s1; m.s2 = s2; 
         } 
         else {
-            // WINNER FLIPPED - Restore queue to exactly how it was before this match
-            if (!fullSnapshot) return alert("Cannot flip winner: History lost.");
-            
-            const snap = JSON.parse(fullSnapshot);
-            const originalPlayers = [...m.t1, ...m.t2];
-            
-            // Revert all core states
-            queue = snap.queue;
-            streaks = snap.streaks;
-            winCount = snap.winCount;
-            lossCount = snap.lossCount;
-            historyLog = snap.historyLog; // Removes the "wrong" match record
-            matchCounter = snap.matchCounter;
-            
-            // Re-process with corrected scores (Passing false to isUndoable to avoid nested snapshots)
-            processResult(s1, s2, originalPlayers, true);
+            undo(); // Revert to previous state
+            processResult(s1, s2, currentMatch, true);
         }
         renderAll(); save();
     }
 
     document.getElementById('submitBtn').onclick = function() {
-        const s1 = parseInt(document.getElementById('s1').value), s2 = parseInt(document.getElementById('s2').value);
+        const s1 = parseInt(document.getElementById('sc1').value), s2 = parseInt(document.getElementById('sc2').value);
         if (isNaN(s1) || isNaN(s2)) return alert("Enter scores");
         processResult(s1, s2, currentMatch);
-        document.getElementById('s1').value = ""; document.getElementById('s2').value = "";
+        document.getElementById('sc1').value = ""; document.getElementById('sc2').value = "";
         renderAll(); save();
     };
 
-    document.getElementById('undoBtn').onclick = function() {
+    function undo() {
         if (!fullSnapshot) return;
-        Object.assign(window, JSON.parse(fullSnapshot));
+        applyState(JSON.parse(fullSnapshot));
         renderAll(); save();
-    };
+    }
+    document.getElementById('undoBtn').onclick = undo;
 
     document.getElementById('pairBtn').onclick = function() {
-        let pToPlay = [];
-        currentWinners.forEach(p => {
-            if (players.includes(p) && (streaks[p] || 0) < 2) pToPlay.push(p);
-            else { if (players.includes(p)) queue.push(p); delete streaks[p]; }
-        });
+        let pToPlay = [...currentWinners];
         while (pToPlay.length < 4 && queue.length > 0) pToPlay.push(queue.shift());
-        if (pToPlay.length < 4) { pToPlay.forEach(p => queue.unshift(p)); return alert("Need 4 players"); }
+        
+        if (pToPlay.length < 4) { 
+            pToPlay.forEach(p => { if (!currentWinners.includes(p)) queue.unshift(p); }); 
+            return alert("Need 4 players"); 
+        }
+        
         currentMatch = pToPlay;
         showCourt(); updateQueueUI(); save();
     };
@@ -290,7 +296,6 @@
         players.push(val); queue.push(val);
         document.getElementById('nameInput').value = ""; renderAll(); save();
     }
-
     document.getElementById('addBtn').onclick = addPlayer;
     document.getElementById('nameInput').onkeypress = (e) => { if(e.key === 'Enter') addPlayer(); };
 
@@ -301,8 +306,8 @@
     }
 
     document.getElementById('startBtn').onclick = function() {
-        isLive = true; historyLog = []; matchCounter = 0; queue = [...players];
-        players.forEach(p => { winCount[p] = 0; lossCount[p] = 0; streaks[p] = 0; });
+        isLive = true; historyLog = []; matchCounter = 0; queue = [...players]; streaks = {}; currentWinners = [];
+        players.forEach(p => { winCount[p] = 0; lossCount[p] = 0; });
         showIdle(); renderAll(); save();
     };
 
@@ -313,7 +318,7 @@
     };
 
     document.getElementById('resumeBtn').onclick = function() { isLive = true; document.getElementById('tallyUI').style.display = 'none'; renderAll(); };
-    document.getElementById('resetBtn').onclick = function() { if(confirm("Reset All Data?")) { localStorage.clear(); location.reload(); } };
+    document.getElementById('resetBtn').onclick = function() { if(confirm("Reset All?")) { localStorage.clear(); location.reload(); } };
     
     window.onload = load;
 </script>
