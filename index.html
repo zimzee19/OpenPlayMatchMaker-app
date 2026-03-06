@@ -4,15 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#0f172a">
-    <title>Pickleball Open Play Match Maker</title>
+    <title>Pickleball Match Maker Pro</title>
     <style>
-        :root { --bg: #0f172a; --card: #1e293b; --accent: #38bdf8; --text: #f1f5f9; --win: #22c55e; --lose: #ef4444; }
+        :root { --bg: #0f172a; --card: #1e293b; --accent: #38bdf8; --text: #f1f5f9; --win: #22c55e; --lose: #ef4444; --warn: #fbbf24; }
         body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); padding: 10px; display: flex; flex-direction: column; align-items: center; margin: 0; }
         .header-section { text-align: center; margin-bottom: 15px; width: 100%; max-width: 1250px; }
         h1 { font-size: 1.5rem; padding: 0 10px; }
-        .rules-box { background: #1a2233; border: 1px solid #334155; border-radius: 8px; padding: 12px; margin: 10px; text-align: left; max-width: 600px; }
-        .rules-box h3 { margin: 0 0 5px 0; font-size: 0.8rem; color: var(--accent); text-transform: uppercase; }
-        .rules-box ul { margin: 0; padding-left: 18px; color: #94a3b8; font-size: 0.85rem; }
         .dashboard { display: grid; grid-template-columns: 1fr; gap: 15px; width: 100%; max-width: 1250px; }
         @media (min-width: 1024px) { .dashboard { grid-template-columns: 320px 1fr 320px; align-items: start; } }
         .panel { background: var(--card); padding: 15px; border-radius: 12px; border: 1px solid #334155; display: flex; flex-direction: column; }
@@ -23,9 +20,13 @@
         button { padding: 12px; background: var(--accent); border: none; font-weight: bold; cursor: pointer; border-radius: 8px; color: #0f172a; font-size: 0.9rem; }
         .match-area { text-align: center; border: 2px solid #334155; padding: 15px; border-radius: 12px; background: #1a2233; }
         ul { list-style: none; padding: 0; margin: 0; }
-        li { background: #334155; padding: 10px 12px; margin-bottom: 8px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; }
+        li { background: #334155; padding: 10px 12px; margin-bottom: 8px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; cursor: default; }
+        .q-item { cursor: grab; border: 1px solid transparent; }
+        .q-item:active { cursor: grabbing; }
+        .q-item.dragging { opacity: 0.5; border: 1px dashed var(--accent); }
+        .court-slot { color: var(--accent); text-decoration: underline; cursor: pointer; font-weight: bold; }
         .del-btn { background: var(--lose); color: white; padding: 8px 12px; font-size: 1rem; border-radius: 6px; border: none; }
-        .score-btn { background: #fbbf24; color: #000; padding: 4px 8px; font-size: 0.7rem; border-radius: 4px; border: none; font-weight: bold; }
+        .score-btn { background: var(--warn); color: #000; padding: 4px 8px; font-size: 0.7rem; border-radius: 4px; border: none; font-weight: bold; }
         .hist-item { background: #1a2233; border-left: 4px solid var(--accent); padding: 10px; margin-bottom: 10px; border-radius: 6px; font-size: 0.9rem; }
         .winner-bold { font-weight: 800; color: var(--win); }
         .loser-red { color: var(--lose); font-weight: bold; }
@@ -38,15 +39,7 @@
 <body>
 
     <div class="header-section">
-        <h1>Pickleball Open Play Match Maker</h1>
-        <div class="rules-box">
-            <h3>Rules</h3>
-            <ul>
-                <li>Queue follows order names are added.</li>
-                <li>Winners split; next 2 in queue join.</li>
-                <li>2 game max (regardless of result).</li>
-            </ul>
-        </div>
+        <h1>Pickleball Match Maker</h1>
     </div>
 
     <div class="dashboard">
@@ -59,19 +52,24 @@
             <div class="scroll-area"><ul id="pList"></ul></div>
             <div class="footer-btns">
                 <button id="startBtn" style="background: var(--win); color: white;">START SESSION</button>
-                <button id="endBtn" style="background: var(--lose); color: white; display: none;">END SESSION</button>
                 <button id="resetBtn" style="background: #475569; color: white;">RESET ALL</button>
             </div>
         </div>
 
         <div class="panel">
-            <h2 id="centerTitle">2. Active Match</h2>
+            <h2 id="centerTitle">2. Court</h2>
             <div id="matchUI" style="display:none;">
                 <div class="match-area">
                     <div id="courtDisplay" style="display:none;">
-                        <div style="margin-bottom:10px;"><b>Team 1</b><br><span id="p1"></span> & <span id="p2"></span></div>
+                        <div style="margin-bottom:10px;"><b>Team 1</b><br>
+                            <span class="court-slot" onclick="swapPlayer(0)" id="p1"></span> & 
+                            <span class="court-slot" onclick="swapPlayer(1)" id="p2"></span>
+                        </div>
                         <div style="color: #64748b; font-weight: bold; font-size: 0.8rem;">VS</div>
-                        <div style="margin-bottom:15px;"><b>Team 2</b><br><span id="p3"></span> & <span id="p4"></span></div>
+                        <div style="margin-bottom:15px;"><b>Team 2</b><br>
+                            <span class="court-slot" onclick="swapPlayer(2)" id="p3"></span> & 
+                            <span class="court-slot" onclick="swapPlayer(3)" id="p4"></span>
+                        </div>
                         <div style="margin-bottom: 20px; display: flex; justify-content: center; gap: 15px;">
                             <input type="number" id="s1" placeholder="Sc 1" style="width: 70px;">
                             <input type="number" id="s2" placeholder="Sc 2" style="width: 70px;">
@@ -83,10 +81,14 @@
                         <button id="pairBtn" style="width:100%; background: var(--win); color: white; padding: 15px; font-size: 1.1rem;">PAIR NEXT MATCH</button>
                     </div>
                 </div>
+                <div class="footer-btns">
+                    <button id="undoBtn" style="background: var(--warn); color: black; display: none;">UNDO LAST SUBMIT</button>
+                    <button id="endBtn" style="background: var(--lose); color: white;">END SESSION</button>
+                </div>
             </div>
             <div id="tallyUI" style="display:none;" class="scroll-area">
                 <table class="tally-table"><thead><tr><th>Player</th><th>W</th><th>L</th></tr></thead><tbody id="tallyBody"></tbody></table>
-                <button id="resumeBtn" style="width:100%; margin-top:20px; background: #475569; color:white;">RESUME</button>
+                <button id="resumeBtn" style="width:100%; margin-top:20px; background: #475569; color:white;">RESUME SESSION</button>
             </div>
             <p id="waitText" style="text-align:center; color: #64748b; margin-top: 30px;">Add players to begin.</p>
         </div>
@@ -100,15 +102,15 @@
 
 <script>
     let players = [], queue = [], currentWinners = [], streaks = {}, currentMatch = [], isLive = false, matchCounter = 0, winCount = {}, lossCount = {}, historyLog = [], isCourtOccupied = false;
-    let preMatchSnapshot = null; // Full state capture
+    let fullSnapshot = null; // Used for Undo and flipped-winner rewinds
 
     function saveToStorage() {
-        const data = { players, queue, currentWinners, streaks, currentMatch, isLive, matchCounter, winCount, lossCount, historyLog, isCourtOccupied, preMatchSnapshot };
-        localStorage.setItem('pickleball_data', JSON.stringify(data));
+        const data = { players, queue, currentWinners, streaks, currentMatch, isLive, matchCounter, winCount, lossCount, historyLog, isCourtOccupied, fullSnapshot };
+        localStorage.setItem('pickleball_v3', JSON.stringify(data));
     }
 
     function loadFromStorage() {
-        const saved = localStorage.getItem('pickleball_data');
+        const saved = localStorage.getItem('pickleball_v3');
         if (!saved) return;
         const data = JSON.parse(saved);
         Object.assign(window, data);
@@ -116,11 +118,12 @@
         if (isLive) {
             document.getElementById('matchUI').style.display = 'block';
             document.getElementById('waitText').style.display = 'none';
-            document.getElementById('endBtn').style.display = 'block';
+            document.getElementById('undoBtn').style.display = historyLog.length > 0 ? 'block' : 'none';
             if (isCourtOccupied && currentMatch.length === 4) showCourt(); else showIdle();
         }
     }
 
+    // --- Core UI Functions ---
     function showCourt() {
         document.getElementById('courtDisplay').style.display = 'block';
         document.getElementById('idleDisplay').style.display = 'none';
@@ -139,14 +142,20 @@
     }
 
     function updateQueueUI() {
-        document.getElementById('qList').innerHTML = queue.map((p, i) => `<li><span>${i+1}. ${p}</span> <button class="del-btn" onclick="removePlayer('${p}')">×</button></li>`).join('');
+        const qContainer = document.getElementById('qList');
+        qContainer.innerHTML = queue.map((p, i) => `
+            <li class="q-item" draggable="true" data-index="${i}">
+                <span>${i+1}. ${p}</span>
+                <button class="del-btn" onclick="removePlayer('${p}')">×</button>
+            </li>`).join('');
+        setupDragAndDrop();
     }
 
     function renderHistory() {
         document.getElementById('hList').innerHTML = historyLog.map((m, idx) => `
             <div class="hist-item">
                 <span class="score-display">#${m.num}: ${m.s1}-${m.s2} 
-                    ${idx === 0 ? `<button class="score-btn" onclick="quickEditScore()">EDIT SCORE</button>` : ''}
+                    ${idx === 0 ? `<button class="score-btn" onclick="quickEditScore()">FIX SCORE</button>` : ''}
                 </span>
                 <span class="${m.s1 > m.s2 ? 'winner-bold' : 'loser-red'}">${m.t1[0]} & ${m.t1[1]}</span> vs 
                 <span class="${m.s2 > m.s1 ? 'winner-bold' : 'loser-red'}">${m.t2[0]} & ${m.t2[1]}</span>
@@ -154,59 +163,70 @@
         `).join('');
     }
 
-    function quickEditScore() {
-        const m = historyLog[0];
-        const oldWinnerWasT1 = m.s1 > m.s2;
-        const newS1 = prompt(`New score for ${m.t1[0]}/${m.t1[1]}:`, m.s1);
-        const newS2 = prompt(`New score for ${m.t2[0]}/${m.t2[1]}:`, m.s2);
+    // --- Manual Swap Feature ---
+    function swapPlayer(matchIdx) {
+        const oldPlayer = currentMatch[matchIdx];
+        const allAvailable = players.filter(p => !currentMatch.includes(p));
+        if (allAvailable.length === 0) return alert("No other players available to swap.");
         
-        if (newS1 === null || newS2 === null || isNaN(newS1) || isNaN(newS2)) return;
-        const s1 = parseInt(newS1), s2 = parseInt(newS2);
-        const newWinnerIsT1 = s1 > s2;
+        const nameList = allAvailable.join(", ");
+        const newPlayer = prompt(`Replace ${oldPlayer} with who?\nAvailable: ${nameList}`);
+        
+        if (!newPlayer || !players.includes(newPlayer)) return;
 
-        if (oldWinnerWasT1 === newWinnerIsT1) {
-            // Just update scores, winner didn't change
-            m.s1 = s1; m.s2 = s2;
-        } else {
-            // WINNER FLIPPED: REWIND REQUIRED
-            if (!preMatchSnapshot) return alert("Cannot rewind: No snapshot found.");
-            
-            // 1. If a new match is on court, send them to front of queue to avoid duplicates
-            if (isCourtOccupied) {
-                queue.unshift(...currentMatch);
-                currentMatch = [];
-            }
-
-            // 2. Restore state to BEFORE the error match ended
-            queue = [...preMatchSnapshot.queue];
-            streaks = {...preMatchSnapshot.streaks};
-            currentWinners = [...preMatchSnapshot.currentWinners];
-            winCount = {...preMatchSnapshot.winCount};
-            lossCount = {...preMatchSnapshot.lossCount};
-            const matchToFix = preMatchSnapshot.activeMatchOnSubmit;
-            
-            // 3. Remove the bad history entry
-            historyLog.shift();
-            matchCounter--;
-
-            // 4. Force the "Fixed" match back as current and submit it properly
-            currentMatch = matchToFix;
-            processMatchResult(s1, s2);
+        // If new player was in queue, put old player in their spot. Otherwise just swap.
+        const qIdx = queue.indexOf(newPlayer);
+        if (qIdx !== -1) {
+            queue[qIdx] = oldPlayer;
         }
-        renderHistory(); updateQueueUI(); saveToStorage();
+        currentMatch[matchIdx] = newPlayer;
+        
+        showCourt(); updateQueueUI(); saveToStorage();
     }
 
-    function processMatchResult(s1, s2) {
-        // Record pre-state for the NEXT edit
-        preMatchSnapshot = {
-            queue: [...queue],
-            streaks: {...streaks},
-            currentWinners: [...currentWinners],
-            winCount: {...winCount},
-            lossCount: {...lossCount},
-            activeMatchOnSubmit: [...currentMatch]
-        };
+    // --- Drag and Drop Queue ---
+    function setupDragAndDrop() {
+        const items = document.querySelectorAll('.q-item');
+        let dragSrcEl = null;
 
+        items.forEach(item => {
+            item.addEventListener('dragstart', function(e) {
+                dragSrcEl = this;
+                this.classList.add('dragging');
+                e.dataTransfer.effectAllowed = 'move';
+            });
+            item.addEventListener('dragover', e => e.preventDefault());
+            item.addEventListener('drop', function(e) {
+                e.preventDefault();
+                const fromIdx = parseInt(dragSrcEl.getAttribute('data-index'));
+                const toIdx = parseInt(this.getAttribute('data-index'));
+                const movedItem = queue.splice(fromIdx, 1)[0];
+                queue.splice(toIdx, 0, movedItem);
+                updateQueueUI(); saveToStorage();
+            });
+            item.addEventListener('dragend', function() { this.classList.remove('dragging'); });
+        });
+    }
+
+    // --- Undo Logic ---
+    document.getElementById('undoBtn').onclick = function() {
+        if (!fullSnapshot || !confirm("Undo last submit?")) return;
+        // Restore everything from snapshot
+        Object.assign(window, JSON.parse(fullSnapshot));
+        renderHistory(); updateQueueUI(); showCourt(); saveToStorage();
+        document.getElementById('undoBtn').style.display = historyLog.length > 0 ? 'block' : 'none';
+    };
+
+    function takeSnapshot() {
+        fullSnapshot = JSON.stringify({
+            queue, streaks, currentWinners, winCount, lossCount, 
+            historyLog, matchCounter, currentMatch, isCourtOccupied
+        });
+    }
+
+    // --- Score Submission Logic ---
+    function processMatchResult(s1, s2) {
+        takeSnapshot();
         const t1 = [currentMatch[0], currentMatch[1]], t2 = [currentMatch[2], currentMatch[3]];
         let winners = s1 > s2 ? t1 : t2, losers = s1 > s2 ? t2 : t1;
         
@@ -219,8 +239,31 @@
         currentWinners.forEach(p => streaks[p] = (streaks[p] || 0) + 1);
         
         currentMatch = []; showIdle();
+        document.getElementById('undoBtn').style.display = 'block';
     }
 
+    function quickEditScore() {
+        const m = historyLog[0];
+        const oldWinnerWasT1 = m.s1 > m.s2;
+        const nS1 = prompt(`Score for ${m.t1[0]}/${m.t1[1]}:`, m.s1);
+        const nS2 = prompt(`Score for ${m.t2[0]}/${m.t2[1]}:`, m.s2);
+        
+        if (nS1 === null || nS2 === null) return;
+        const s1 = parseInt(nS1), s2 = parseInt(nS2);
+
+        if (oldWinnerWasT1 === (s1 > s2)) {
+            m.s1 = s1; m.s2 = s2;
+        } else {
+            // Winner flipped - Revert to before this match and re-apply
+            const snapshotData = JSON.parse(fullSnapshot);
+            Object.assign(window, snapshotData);
+            historyLog.shift(); matchCounter--; // Remove old record
+            processMatchResult(s1, s2);
+        }
+        renderHistory(); updateQueueUI(); saveToStorage();
+    }
+
+    // --- Standard Controls ---
     function pairNextMatch() {
         if (!isLive) return;
         let playersToPlay = [];
@@ -239,14 +282,14 @@
         showCourt(); updateQueueUI(); saveToStorage();
     }
 
-    function addPlayer() {
+    document.getElementById('addBtn').onclick = function() {
         const input = document.getElementById('nameInput');
         const name = input.value.trim();
         if (!name || players.includes(name)) return;
         players.push(name); winCount[name] = 0; lossCount[name] = 0; queue.push(name);
         renderPlayerList(); updateQueueUI(); saveToStorage();
         input.value = ""; input.focus();
-    }
+    };
 
     function removePlayer(name) {
         players = players.filter(p => p !== name); queue = queue.filter(p => p !== name);
@@ -255,17 +298,12 @@
         renderPlayerList(); updateQueueUI(); saveToStorage();
     }
 
-    document.getElementById('addBtn').onclick = addPlayer;
-    document.getElementById('pairBtn').onclick = pairNextMatch;
-    document.getElementById('nameInput').onkeypress = (e) => { if(e.key === 'Enter') addPlayer(); };
-
     document.getElementById('startBtn').onclick = function() {
         if (players.length < 4) return alert("Need 4 players!");
-        isLive = true; matchCounter = 0; historyLog = []; preMatchSnapshot = null;
+        isLive = true; matchCounter = 0; historyLog = []; 
         players.forEach(p => { winCount[p] = 0; lossCount[p] = 0; streaks[p] = 0; });
         document.getElementById('matchUI').style.display = 'block';
         document.getElementById('waitText').style.display = 'none';
-        document.getElementById('endBtn').style.display = 'block';
         showIdle(); saveToStorage();
     };
 
@@ -283,12 +321,16 @@
         saveToStorage();
     };
 
-    document.getElementById('resumeBtn').onclick = function() { isLive = true; document.getElementById('tallyUI').style.display = 'none'; document.getElementById('matchUI').style.display = 'block'; saveToStorage(); };
-
-    document.getElementById('resetBtn').onclick = function() { 
-        if(confirm("Wipe all data?")) { localStorage.removeItem('pickleball_data'); location.reload(); }
+    document.getElementById('resumeBtn').onclick = function() { 
+        isLive = true; document.getElementById('tallyUI').style.display = 'none'; document.getElementById('matchUI').style.display = 'block'; 
+        saveToStorage(); 
     };
 
+    document.getElementById('resetBtn').onclick = function() { 
+        if(confirm("Wipe all data?")) { localStorage.removeItem('pickleball_v3'); location.reload(); }
+    };
+
+    document.getElementById('pairBtn').onclick = pairNextMatch;
     window.onload = loadFromStorage;
 </script>
 </body>
