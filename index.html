@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Pickleball Match Maker - Final</title>
+    <title>Pickleball Match Maker - Final + Draggable</title>
     <style>
         :root { --bg: #0f172a; --card: #1e293b; --accent: #38bdf8; --text: #f1f5f9; --win: #22c55e; --lose: #ef4444; --warn: #fbbf24; }
         body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); padding: 10px; margin: 0; display: flex; flex-direction: column; align-items: center; }
@@ -22,7 +22,9 @@
         .modal-box { background: var(--card); padding: 20px; border-radius: 10px; width: 100%; max-width: 500px; text-align: center; overflow-y: auto; max-height: 80vh; }
         .win-txt { color: var(--win); font-weight: bold; }
         .lose-txt { color: var(--lose); }
-        .q-item { padding: 8px; border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center; }
+        .q-item { padding: 10px; border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center; background: #1e293b; cursor: grab; }
+        .q-item:active { cursor: grabbing; background: #334155; }
+        .dragging { opacity: 0.5; border: 2px dashed var(--accent); }
         table { width: 100%; border-collapse: collapse; margin-top: 15px; }
         th, td { padding: 10px; border-bottom: 1px solid #334155; text-align: left; }
         th { color: var(--accent); font-size: 0.8rem; }
@@ -33,7 +35,7 @@
 <div id="swapModal">
     <div class="modal-box">
         <h3>Swap Player</h3>
-        <p style="font-size: 0.8rem; color: var(--warn);">Note: Swapping resets their consecutive win streak.</p>
+        <p style="font-size: 0.8rem; color: var(--warn);">Swapping resets the consecutive win streak.</p>
         <select id="swapSelect" style="width:100%; padding:10px; margin-bottom:15px; background:#0f172a; color:white; border:1px solid #334155;"></select>
         <div style="display:flex; gap:10px;">
             <button id="confirmSwap" style="flex:1; background: var(--win); color:white;">CONFIRM</button>
@@ -46,9 +48,7 @@
     <div class="modal-box">
         <h2 style="font-size: 1.5rem;">Session Results</h2>
         <table id="statsTable">
-            <thead>
-                <tr><th>Player</th><th>W</th><th>L</th><th>Win %</th></tr>
-            </thead>
+            <thead><tr><th>Player</th><th>W</th><th>L</th><th>Win %</th></tr></thead>
             <tbody id="statsBody"></tbody>
         </table>
         <div style="display:flex; gap:10px; margin-top:20px;">
@@ -92,12 +92,10 @@
             </div>
             <button onclick="submitScore()" style="width:100%;">SUBMIT SCORE</button>
         </div>
-
         <div id="idleUI" style="text-align:center; padding:20px;">
-            <p style="color:#64748b;">Waiting for pairing...</p>
+            <p style="color:#64748b;">Ready to pair?</p>
             <button onclick="pairNext()" style="width:100%; background: var(--win); color:white; padding:15px;">PAIR NEXT (SPLIT WINNERS)</button>
         </div>
-
         <div style="display:flex; flex-direction:column; gap:8px; margin-top:15px;">
             <button id="undoBtn" onclick="undo()" style="background: var(--warn); display:none; color:black;">UNDO LAST MATCH</button>
             <button onclick="endSession()" style="background: var(--accent); color: #0f172a;">END SESSION & VIEW STATS</button>
@@ -106,49 +104,63 @@
 
     <div class="panel">
         <h2>Queue & History</h2>
-        <div id="qList" style="margin-bottom:15px;"></div>
+        <div id="qList" style="margin-bottom:15px;" ondragover="allowDrop(event)"></div>
         <div id="hList" style="border-top:1px solid #334155; padding-top:10px;"></div>
     </div>
 </div>
 
 <script>
     let players = [], queue = [], currentMatch = [], streaks = {}, winnersStaying = [], history = [], snapshots = [], stats = {};
+    let draggedIdx = null;
 
-    function save() { localStorage.setItem('pb_logic_final', JSON.stringify({players, queue, currentMatch, streaks, winnersStaying, history, snapshots, stats})); }
+    function save() { localStorage.setItem('pb_logic_v12', JSON.stringify({players, queue, currentMatch, streaks, winnersStaying, history, snapshots, stats})); }
     
-    function startSession() {
-        if (players.length < 4) return alert("Need at least 4 players to start.");
-        queue = [...players]; history = []; streaks = {}; winnersStaying = []; currentMatch = []; snapshots = [];
-        stats = {}; players.forEach(p => stats[p] = {w: 0, l: 0});
-        document.getElementById('mainDisplay').style.display = 'block';
-        render();
-    }
-
     function addP() {
         let name = document.getElementById('nameIn').value.trim();
         if (name && !players.includes(name)) { 
-            players.push(name); 
-            queue.push(name); 
-            stats[name] = {w: 0, l: 0};
-            render(); 
+            players.push(name); queue.push(name); stats[name] = {w: 0, l: 0}; render(); 
         }
         document.getElementById('nameIn').value = "";
     }
 
     function removePlayer(name) {
-        players = players.filter(p => p !== name);
-        queue = queue.filter(p => p !== name);
-        delete stats[name];
+        players = players.filter(p => p !== name); queue = queue.filter(p => p !== name); delete stats[name]; render();
+    }
+
+    function startSession() {
+        if (players.length < 4) return alert("Need 4 players.");
+        queue = [...players]; history = []; streaks = {}; winnersStaying = []; currentMatch = []; snapshots = [];
+        players.forEach(p => stats[p] = {w: 0, l: 0});
+        document.getElementById('mainDisplay').style.display = 'block';
+        render();
+    }
+
+    // Drag and Drop Functions
+    function handleDragStart(e, index) { draggedIdx = index; e.target.classList.add('dragging'); }
+    function handleDragEnd(e) { e.target.classList.remove('dragging'); }
+    function allowDrop(e) { e.preventDefault(); }
+    function handleDrop(e, targetIdx) {
+        e.preventDefault();
+        const item = queue.splice(draggedIdx, 1)[0];
+        queue.splice(targetIdx, 0, item);
         render();
     }
 
     function render() {
-        document.getElementById('pList').innerHTML = players.map(p => `<div class="q-item">${p} <button onclick="removePlayer('${p}')" style="background:var(--lose); color:white; border:none; border-radius:4px; cursor:pointer;">X</button></div>`).join('');
-        document.getElementById('qList').innerHTML = "<b>Queue:</b><br>" + queue.map((p, i) => `<div class="q-item">${i+1}. ${p}</div>`).join('');
+        document.getElementById('pList').innerHTML = players.map(p => `<div class="q-item" style="cursor:default;">${p} <button onclick="removePlayer('${p}')" style="background:var(--lose); color:white; border:none; padding:2px 8px; border-radius:4px;">X</button></div>`).join('');
+        
+        document.getElementById('qList').innerHTML = "<b>Queue (Drag to reorder):</b><br>" + queue.map((p, i) => `
+            <div class="q-item" draggable="true" 
+                 ondragstart="handleDragStart(event, ${i})" 
+                 ondragend="handleDragEnd(event)" 
+                 ondragover="allowDrop(event)" 
+                 ondrop="handleDrop(event, ${i})">
+                <span>${i+1}. ${p}</span>
+            </div>`).join('');
+
         document.getElementById('hList').innerHTML = "<b>History:</b><br>" + history.map((m, i) => `
             <div class="hist-item">
-                #${m.id}: ${m.s1}-${m.s2} 
-                ${i===0 ? `<button onclick="fixScore()" style="font-size:10px; padding:2px 5px; margin-left:10px; background:var(--warn); color:black; border:none; border-radius:3px;">FIX</button>` : ''}<br>
+                #${m.id}: ${m.s1}-${m.s2} ${i===0 ? `<button onclick="fixScore()" style="font-size:10px; padding:2px 5px; background:var(--warn); border:none; border-radius:3px;">FIX</button>` : ''}<br>
                 <span class="${m.s1>m.s2?'win-txt':'lose-txt'}">${m.t1.join('/')}</span> vs 
                 <span class="${m.s2>m.s1?'win-txt':'lose-txt'}">${m.t2.join('/')}</span>
             </div>`).join('');
@@ -170,120 +182,87 @@
 
     function pairNext() {
         let next = [...winnersStaying];
-        if (next.length === 2) {
-            let p1 = next[0], p2 = next[1];
-            next = [p1, null, p2, null];
-        }
+        if (next.length === 2) { let p1 = next[0], p2 = next[1]; next = [p1, null, p2, null]; }
         while ((next.includes(null) || next.length < 4) && queue.length > 0) {
             let p = queue.shift();
-            if (next.includes(null)) next[next.indexOf(null)] = p;
-            else next.push(p);
+            if (next.includes(null)) next[next.indexOf(null)] = p; else next.push(p);
         }
         if (next.length < 4) {
             next.filter(p => p !== null).forEach(p => { if(!winnersStaying.includes(p)) queue.unshift(p) });
-            return alert("Queue is empty!");
+            return alert("Empty Queue!");
         }
-        currentMatch = next;
-        render();
+        currentMatch = next; render();
     }
 
     function submitScore() {
-        let s1 = parseInt(document.getElementById('sc1').value);
-        let s2 = parseInt(document.getElementById('sc2').value);
-        if (isNaN(s1) || isNaN(s2)) return alert("Please enter both scores.");
-
+        let s1 = parseInt(document.getElementById('sc1').value), s2 = parseInt(document.getElementById('sc2').value);
+        if (isNaN(s1) || isNaN(s2)) return alert("Enter scores.");
         snapshots.push(JSON.stringify({queue: [...queue], streaks: {...streaks}, winnersStaying: [...winnersStaying], currentMatch: [...currentMatch], stats: JSON.parse(JSON.stringify(stats))}));
-
         let t1 = [currentMatch[0], currentMatch[1]], t2 = [currentMatch[2], currentMatch[3]];
         let winners = s1 > s2 ? t1 : t2, losers = s1 > s2 ? t2 : t1;
-
-        losers.forEach(p => { 
-            queue.push(p); delete streaks[p]; 
-            if(stats[p]) stats[p].l++;
-        });
-
+        losers.forEach(p => { queue.push(p); delete streaks[p]; if(stats[p]) stats[p].l++; });
         winnersStaying = [];
         winners.forEach(p => {
             if(stats[p]) stats[p].w++;
             streaks[p] = (streaks[p] || 0) + 1;
-            if (streaks[p] >= 2) { queue.push(p); delete streaks[p]; }
-            else { winnersStaying.push(p); }
+            if (streaks[p] >= 2) { queue.push(p); delete streaks[p]; } else winnersStaying.push(p);
         });
-
         history.unshift({id: history.length + 1, s1, s2, t1, t2});
-        currentMatch = [];
-        document.getElementById('sc1').value = ""; document.getElementById('sc2').value = "";
+        currentMatch = []; document.getElementById('sc1').value = ""; document.getElementById('sc2').value = "";
         render();
     }
 
     function undo() {
         if (snapshots.length === 0) return;
         let snap = JSON.parse(snapshots.pop());
-        queue = snap.queue; streaks = snap.streaks; winnersStaying = snap.winnersStaying; 
-        currentMatch = snap.currentMatch; stats = snap.stats;
-        history.shift();
-        render();
+        queue = snap.queue; streaks = snap.streaks; winnersStaying = snap.winnersStaying; currentMatch = snap.currentMatch; stats = snap.stats;
+        history.shift(); render();
     }
 
     function fixScore() {
         let m = history[0];
-        let n1 = prompt("Correct Team 1 Score:", m.s1);
-        let n2 = prompt("Correct Team 2 Score:", m.s2);
+        let n1 = prompt("Correct T1 Score:", m.s1), n2 = prompt("Correct T2 Score:", m.s2);
         if (n1 === null || n2 === null) return;
-        undo();
-        document.getElementById('sc1').value = n1; document.getElementById('sc2').value = n2;
-        submitScore();
+        undo(); document.getElementById('sc1').value = n1; document.getElementById('sc2').value = n2; submitScore();
+    }
+
+    function openSwap(idx) {
+        let sel = document.getElementById('swapSelect');
+        sel.innerHTML = queue.map(p => `<option value="${p}">${p}</option>`).join('');
+        currentMatch.forEach((p, i) => { if(i!==idx) sel.innerHTML += `<option value="${p}">${p} (Switch)</option>` });
+        document.getElementById('swapModal').style.display = 'flex';
+        document.getElementById('confirmSwap').onclick = () => {
+            let newP = sel.value, oldP = currentMatch[idx];
+            if (queue.includes(newP)) {
+                queue = queue.filter(p => p !== newP); queue.unshift(oldP); currentMatch[idx] = newP;
+                delete streaks[oldP]; winnersStaying = winnersStaying.filter(p => p !== oldP);
+            } else {
+                let oIdx = currentMatch.indexOf(newP); currentMatch[idx] = newP; currentMatch[oIdx] = oldP;
+            }
+            document.getElementById('swapModal').style.display = 'none'; render();
+        };
     }
 
     function endSession() {
-        const body = document.getElementById('statsBody');
-        body.innerHTML = "";
+        const body = document.getElementById('statsBody'); body.innerHTML = "";
         players.forEach(p => {
-            const w = stats[p]?.w || 0;
-            const l = stats[p]?.l || 0;
-            const total = w + l;
-            const pct = total === 0 ? "0%" : ((w / total) * 100).toFixed(0) + "%";
+            const w = stats[p]?.w || 0, l = stats[p]?.l || 0, total = w + l;
+            const pct = total === 0 ? "0%" : ((w/total)*100).toFixed(0) + "%";
             body.innerHTML += `<tr><td>${p}</td><td>${w}</td><td>${l}</td><td>${pct}</td></tr>`;
         });
         document.getElementById('statsModal').style.display = 'flex';
     }
 
     function resetAll() {
-        if(!confirm("This will clear everything. Are you sure?")) return;
-        localStorage.removeItem('pb_logic_final');
-        location.reload();
-    }
-
-    function openSwap(idx) {
-        let sel = document.getElementById('swapSelect');
-        sel.innerHTML = queue.map(p => `<option value="${p}">${p}</option>`).join('');
-        currentMatch.forEach((p, i) => { if(i!==idx) sel.innerHTML += `<option value="${p}">${p} (Partner Switch)</option>` });
-        document.getElementById('swapModal').style.display = 'flex';
-        document.getElementById('confirmSwap').onclick = () => {
-            let newP = sel.value;
-            let oldP = currentMatch[idx];
-            if (queue.includes(newP)) {
-                queue = queue.filter(p => p !== newP);
-                queue.unshift(oldP);
-                currentMatch[idx] = newP;
-                delete streaks[oldP];
-                winnersStaying = winnersStaying.filter(p => p !== oldP);
-            } else {
-                let oIdx = currentMatch.indexOf(newP);
-                currentMatch[idx] = newP; currentMatch[oIdx] = oldP;
-            }
-            document.getElementById('swapModal').style.display = 'none';
-            render();
-        };
+        if(confirm("Wipe everything?")) { localStorage.removeItem('pb_logic_v12'); location.reload(); }
     }
 
     window.onload = () => {
-        let saved = localStorage.getItem('pb_logic_final');
+        let saved = localStorage.getItem('pb_logic_v12');
         if (saved) {
             let d = JSON.parse(saved);
-            players = d.players || []; queue = d.queue || []; currentMatch = d.currentMatch || [];
-            streaks = d.streaks || {}; winnersStaying = d.winnersStaying || [];
-            history = d.history || []; snapshots = d.snapshots || []; stats = d.stats || {};
+            players = d.players; queue = d.queue; currentMatch = d.currentMatch; streaks = d.streaks;
+            winnersStaying = d.winnersStaying; history = d.history; snapshots = d.snapshots; stats = d.stats;
             if (players.length > 0) document.getElementById('mainDisplay').style.display = 'block';
             render();
         }
