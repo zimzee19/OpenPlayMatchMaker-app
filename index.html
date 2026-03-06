@@ -109,11 +109,11 @@
     let players = [], queue = [], currentWinners = [], streaks = {}, currentMatch = [], isLive = false, matchCounter = 0, winCount = {}, lossCount = {}, historyLog = [], isCourtOccupied = false, fullSnapshot = null, activeSwapIndex = null;
 
     function save() {
-        localStorage.setItem('pb_match_v6', JSON.stringify({ players, queue, currentWinners, streaks, currentMatch, isLive, matchCounter, winCount, lossCount, historyLog, isCourtOccupied, fullSnapshot }));
+        localStorage.setItem('pb_match_v7', JSON.stringify({ players, queue, currentWinners, streaks, currentMatch, isLive, matchCounter, winCount, lossCount, historyLog, isCourtOccupied, fullSnapshot }));
     }
 
     function load() {
-        const data = JSON.parse(localStorage.getItem('pb_match_v6'));
+        const data = JSON.parse(localStorage.getItem('pb_match_v7'));
         if (data) {
             Object.assign(window, data);
             renderAll();
@@ -167,22 +167,12 @@
         updateQueueUI(); save();
     }
 
-    // --- SWAP LOGIC FIXED ---
     function openSwapModal(idx) {
         activeSwapIndex = idx;
         const select = document.getElementById('swapSelect');
         select.innerHTML = '';
-        
-        // Option 1: Partners on court
-        currentMatch.forEach((p, i) => { 
-            if(i !== idx) select.innerHTML += `<option value="${p}">${p} (Switch Team/Partner)</option>`; 
-        });
-        
-        // Option 2: Players in queue
-        queue.forEach(p => { 
-            select.innerHTML += `<option value="${p}">${p} (Substitute from Queue)</option>`; 
-        });
-
+        currentMatch.forEach((p, i) => { if(i !== idx) select.innerHTML += `<option value="${p}">${p} (Switch Team)</option>`; });
+        queue.forEach(p => { select.innerHTML += `<option value="${p}">${p} (From Queue)</option>`; });
         document.getElementById('swapTitle').textContent = `Replace ${currentMatch[idx]}`;
         document.getElementById('swapModal').style.display = 'flex';
     }
@@ -192,27 +182,34 @@
     document.getElementById('confirmSwap').onclick = function() {
         const newVal = document.getElementById('swapSelect').value;
         const oldVal = currentMatch[activeSwapIndex];
-
         if (currentMatch.includes(newVal)) {
-            // Case A: Just switching positions on court. NO QUEUE MOVEMENT.
             const targetIdx = currentMatch.indexOf(newVal);
             currentMatch[targetIdx] = oldVal;
             currentMatch[activeSwapIndex] = newVal;
         } else {
-            // Case B: Substituting with someone from the queue.
-            // 1. Remove the new player from the queue so they aren't duplicated
             queue = queue.filter(p => p !== newVal);
-            // 2. Add the old player to the FRONT of the queue
             queue.unshift(oldVal);
-            // 3. Put the new player on court
             currentMatch[activeSwapIndex] = newVal;
         }
-        
         closeSwapModal(); renderAll(); save();
     };
 
-    function processResult(s1, s2, matchToProcess) {
-        fullSnapshot = JSON.stringify({ queue: [...queue], streaks: {...streaks}, currentWinners: [...currentWinners], winCount: {...winCount}, lossCount: {...lossCount}, historyLog: [...historyLog], matchCounter, currentMatch: [...currentMatch], isCourtOccupied });
+    function processResult(s1, s2, matchToProcess, isUndoable = true) {
+        // Create a deep snapshot BEFORE state changes
+        if (isUndoable) {
+            fullSnapshot = JSON.stringify({ 
+                queue: [...queue], 
+                streaks: {...streaks}, 
+                currentWinners: [...currentWinners], 
+                winCount: {...winCount}, 
+                lossCount: {...lossCount}, 
+                historyLog: [...historyLog], 
+                matchCounter, 
+                currentMatch: [...matchToProcess], 
+                isCourtOccupied 
+            });
+        }
+        
         const t1 = [matchToProcess[0], matchToProcess[1]], t2 = [matchToProcess[2], matchToProcess[3]];
         const win = s1 > s2 ? t1 : t2, lose = s1 > s2 ? t2 : t1;
         
@@ -235,13 +232,28 @@
         const nS2 = prompt(`Score for ${m.t2.join('/')}:`, m.s2);
         if (nS1 === null || nS2 === null) return;
         const s1 = parseInt(nS1), s2 = parseInt(nS2);
-        if ((m.s1 > m.s2) === (s1 > s2)) { m.s1 = s1; m.s2 = s2; } 
+
+        // If winner stays the same, just update history text
+        if ((m.s1 > m.s2) === (s1 > s2)) { 
+            m.s1 = s1; m.s2 = s2; 
+        } 
         else {
+            // WINNER FLIPPED - Restore queue to exactly how it was before this match
+            if (!fullSnapshot) return alert("Cannot flip winner: History lost.");
+            
             const snap = JSON.parse(fullSnapshot);
             const originalPlayers = [...m.t1, ...m.t2];
-            Object.assign(window, snap);
-            historyLog.shift(); matchCounter--;
-            processResult(s1, s2, originalPlayers);
+            
+            // Revert all core states
+            queue = snap.queue;
+            streaks = snap.streaks;
+            winCount = snap.winCount;
+            lossCount = snap.lossCount;
+            historyLog = snap.historyLog; // Removes the "wrong" match record
+            matchCounter = snap.matchCounter;
+            
+            // Re-process with corrected scores (Passing false to isUndoable to avoid nested snapshots)
+            processResult(s1, s2, originalPlayers, true);
         }
         renderAll(); save();
     }
@@ -272,8 +284,6 @@
         showCourt(); updateQueueUI(); save();
     };
 
-    document.getElementById('addBtn').onclick = addPlayer;
-    document.getElementById('nameInput').onkeypress = (e) => { if(e.key === 'Enter') addPlayer(); };
     function addPlayer() {
         const val = document.getElementById('nameInput').value.trim();
         if (!val || players.includes(val)) return;
@@ -281,9 +291,11 @@
         document.getElementById('nameInput').value = ""; renderAll(); save();
     }
 
+    document.getElementById('addBtn').onclick = addPlayer;
+    document.getElementById('nameInput').onkeypress = (e) => { if(e.key === 'Enter') addPlayer(); };
+
     function removePlayer(name) {
-        players = players.filter(p => p !== name); 
-        queue = queue.filter(p => p !== name);
+        players = players.filter(p => p !== name); queue = queue.filter(p => p !== name);
         if (currentMatch.includes(name)) { currentMatch = []; showIdle(); }
         renderAll(); save();
     }
