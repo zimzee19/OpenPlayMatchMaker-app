@@ -3,40 +3,68 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Pickleball Match Maker - Final + Draggable</title>
+    <title>2v2 Pickleball Match Maker</title>
     <style>
         :root { --bg: #0f172a; --card: #1e293b; --accent: #38bdf8; --text: #f1f5f9; --win: #22c55e; --lose: #ef4444; --warn: #fbbf24; }
-        body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); padding: 10px; margin: 0; display: flex; flex-direction: column; align-items: center; }
-        .dashboard { display: grid; grid-template-columns: 1fr; gap: 15px; width: 100%; max-width: 1200px; }
-        @media (min-width: 1024px) { .dashboard { grid-template-columns: 300px 1fr 300px; } }
-        .panel { background: var(--card); padding: 15px; border-radius: 12px; border: 1px solid #334155; }
-        h2 { color: var(--accent); font-size: 0.8rem; text-transform: uppercase; border-bottom: 1px solid #334155; padding-bottom: 5px; margin-top: 0; }
-        .court-area { text-align: center; border: 2px solid var(--accent); padding: 20px; border-radius: 15px; background: #1a2233; margin-bottom: 15px; }
-        .player-slot { color: var(--accent); font-weight: bold; text-decoration: underline; cursor: pointer; font-size: 1.1rem; }
-        .streak-fire { color: var(--warn); font-size: 0.8rem; margin-left: 4px; font-weight: bold; }
-        .input-group { display: flex; gap: 5px; margin-bottom: 10px; }
+        
+        body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); padding: 10px; margin: 0; display: flex; flex-direction: column; align-items: center; height: 100vh; overflow: hidden; }
+        
+        .header-area { text-align: center; width: 100%; max-width: 1200px; margin-bottom: 10px; flex-shrink: 0; }
+        .header-area h1 { margin: 0; font-size: 1.5rem; color: var(--accent); }
+        .rules-list { font-size: 0.85rem; text-align: left; display: inline-block; margin: 10px 0; color: #94a3b8; }
+        .rules-list ul { margin: 0; padding-left: 20px; }
+
+        .dashboard { display: grid; grid-template-columns: 1fr; gap: 15px; width: 100%; max-width: 1200px; flex-grow: 1; overflow: hidden; padding-bottom: 10px; }
+        @media (min-width: 1024px) { .dashboard { grid-template-columns: 300px 1fr 320px; height: 100%; } }
+
+        .panel { background: var(--card); padding: 15px; border-radius: 12px; border: 1px solid #334155; display: flex; flex-direction: column; overflow: hidden; }
+        h2 { color: var(--accent); font-size: 0.8rem; text-transform: uppercase; border-bottom: 1px solid #334155; padding-bottom: 5px; margin-top: 0; flex-shrink: 0; }
+        
+        /* Scroll Logic */
+        .scroll-content { overflow-y: auto; flex-grow: 1; padding-right: 5px; }
+        .scroll-content::-webkit-scrollbar { width: 6px; }
+        .scroll-content::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+
+        .court-area { text-align: center; border: 2px solid var(--accent); padding: 20px; border-radius: 15px; background: #1a2233; margin-bottom: 15px; flex-shrink: 0; }
+        .player-slot { color: var(--accent); font-weight: bold; text-decoration: underline; cursor: pointer; font-size: 1.2rem; }
+        .streak-fire { color: var(--warn); font-size: 0.85rem; margin-left: 4px; font-weight: bold; }
+        
+        .input-group { display: flex; gap: 5px; margin-bottom: 10px; flex-shrink: 0; }
         input { flex: 1; padding: 10px; background: #0f172a; border: 1px solid #334155; color: white; border-radius: 6px; }
         button { padding: 10px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; background: var(--accent); color: #0f172a; }
-        .hist-item { background: #111827; padding: 8px; margin-bottom: 5px; border-radius: 5px; font-size: 0.85rem; border-left: 3px solid var(--accent); }
+        
+        .hist-item { background: #111827; padding: 10px; margin-bottom: 8px; border-radius: 8px; font-size: 0.85rem; border-left: 4px solid var(--accent); }
+        .q-item { padding: 12px; border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center; background: #1e293b; cursor: grab; }
+        .q-item:active { cursor: grabbing; }
+
         #swapModal, #statsModal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 100; justify-content: center; align-items: center; padding: 20px; }
-        .modal-box { background: var(--card); padding: 20px; border-radius: 10px; width: 100%; max-width: 500px; text-align: center; overflow-y: auto; max-height: 80vh; }
+        .modal-box { background: var(--card); padding: 25px; border-radius: 12px; width: 100%; max-width: 500px; text-align: center; max-height: 90vh; overflow-y: auto; border: 1px solid #475569; }
+        
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { padding: 12px 8px; border-bottom: 1px solid #334155; text-align: left; }
+        th { color: var(--accent); font-size: 0.75rem; text-transform: uppercase; }
         .win-txt { color: var(--win); font-weight: bold; }
         .lose-txt { color: var(--lose); }
-        .q-item { padding: 10px; border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center; background: #1e293b; cursor: grab; }
-        .q-item:active { cursor: grabbing; background: #334155; }
-        .dragging { opacity: 0.5; border: 2px dashed var(--accent); }
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-        th, td { padding: 10px; border-bottom: 1px solid #334155; text-align: left; }
-        th { color: var(--accent); font-size: 0.8rem; }
     </style>
 </head>
 <body>
 
+<div class="header-area">
+    <h1>2v2 Pickleball Open Play Match Maker</h1>
+    <div class="rules-list">
+        <ul>
+            <li>1. Queue follows order names are added.</li>
+            <li>2. Winners stay but split (play against each other), next 2 in queue join.</li>
+            <li>3. Maximum of two (2) consecutive games (regardless of result).</li>
+        </ul>
+    </div>
+</div>
+
 <div id="swapModal">
     <div class="modal-box">
         <h3>Swap Player</h3>
-        <p style="font-size: 0.8rem; color: var(--warn);">Swapping resets the consecutive win streak.</p>
-        <select id="swapSelect" style="width:100%; padding:10px; margin-bottom:15px; background:#0f172a; color:white; border:1px solid #334155;"></select>
+        <p style="font-size: 0.8rem; color: var(--warn); margin-bottom: 15px;">Swapping resets the consecutive win streak.</p>
+        <select id="swapSelect" style="width:100%; padding:12px; margin-bottom:20px; background:#0f172a; color:white; border:1px solid #334155; border-radius:6px;"></select>
         <div style="display:flex; gap:10px;">
             <button id="confirmSwap" style="flex:1; background: var(--win); color:white;">CONFIRM</button>
             <button onclick="document.getElementById('swapModal').style.display='none'" style="flex:1; background: #475569; color:white;">CANCEL</button>
@@ -46,14 +74,14 @@
 
 <div id="statsModal">
     <div class="modal-box">
-        <h2 style="font-size: 1.5rem;">Session Results</h2>
+        <h2>Session Results</h2>
         <table id="statsTable">
             <thead><tr><th>Player</th><th>W</th><th>L</th><th>Win %</th></tr></thead>
             <tbody id="statsBody"></tbody>
         </table>
-        <div style="display:flex; gap:10px; margin-top:20px;">
+        <div style="display:flex; gap:10px; margin-top:25px;">
             <button onclick="document.getElementById('statsModal').style.display='none'" style="flex:1; background: #475569; color:white;">BACK</button>
-            <button onclick="resetAll()" style="flex:1; background: var(--lose); color:white;">RESET EVERYTHING</button>
+            <button onclick="resetAll()" style="flex:1; background: var(--lose); color:white;">RESET ALL</button>
         </div>
     </div>
 </div>
@@ -62,13 +90,13 @@
     <div class="panel">
         <h2>1. Players</h2>
         <div class="input-group">
-            <input type="text" id="nameIn" placeholder="Name..." onkeypress="if(event.key==='Enter') addP()">
+            <input type="text" id="nameIn" placeholder="Enter Name..." onkeypress="if(event.key==='Enter') addP()">
             <button onclick="addP()">ADD</button>
         </div>
-        <div id="pList"></div>
-        <div style="display:flex; flex-direction:column; gap:8px; margin-top:10px;">
-            <button onclick="startSession()" style="background: var(--win); color:white;">START NEW SESSION</button>
-            <button onclick="resetAll()" style="background: #475569; color:white;">RESET PLAYER LIST</button>
+        <div class="scroll-content" id="pList"></div>
+        <div style="display:flex; flex-direction:column; gap:8px; margin-top:10px; flex-shrink:0;">
+            <button onclick="startSession()" style="background: var(--win); color:white;">START SESSION</button>
+            <button onclick="resetAll()" style="background: #475569; color:white;">RESET LIST</button>
         </div>
     </div>
 
@@ -80,23 +108,23 @@
                 <span class="player-slot" id="p0" onclick="openSwap(0)"></span><span id="s0" class="streak-fire"></span> & 
                 <span class="player-slot" id="p1" onclick="openSwap(1)"></span><span id="s1" class="streak-fire"></span>
             </div>
-            <div style="margin:10px 0; color:#64748b;">VS</div>
-            <div style="margin-bottom:15px;">
+            <div style="margin:15px 0; color:#64748b; font-weight:bold;">VS</div>
+            <div style="margin-bottom:20px;">
                 <b>Team 2</b><br>
                 <span class="player-slot" id="p2" onclick="openSwap(2)"></span><span id="s2" class="streak-fire"></span> & 
                 <span class="player-slot" id="p3" onclick="openSwap(3)"></span><span id="s3" class="streak-fire"></span>
             </div>
-            <div style="display:flex; justify-content:center; gap:10px; margin-bottom:15px;">
-                <input type="number" id="sc1" placeholder="T1" style="width:60px; text-align:center;">
-                <input type="number" id="sc2" placeholder="T2" style="width:60px; text-align:center;">
+            <div style="display:flex; justify-content:center; gap:15px; margin-bottom:20px;">
+                <input type="number" id="sc1" placeholder="T1" style="width:70px; text-align:center; font-size:1.2rem;">
+                <input type="number" id="sc2" placeholder="T2" style="width:70px; text-align:center; font-size:1.2rem;">
             </div>
-            <button onclick="submitScore()" style="width:100%;">SUBMIT SCORE</button>
+            <button onclick="submitScore()" style="width:100%; padding:15px; font-size:1rem;">SUBMIT SCORE</button>
         </div>
-        <div id="idleUI" style="text-align:center; padding:20px;">
-            <p style="color:#64748b;">Ready to pair?</p>
-            <button onclick="pairNext()" style="width:100%; background: var(--win); color:white; padding:15px;">PAIR NEXT (SPLIT WINNERS)</button>
+        <div id="idleUI" style="text-align:center; padding:30px; background:#1a2233; border-radius:15px; border:2px dashed #334155; margin-bottom:15px;">
+            <p style="color:#64748b; margin-bottom:20px;">Court is Empty</p>
+            <button onclick="pairNext()" style="width:100%; background: var(--win); color:white; padding:15px; font-size:1rem;">PAIR NEXT MATCH</button>
         </div>
-        <div style="display:flex; flex-direction:column; gap:8px; margin-top:15px;">
+        <div style="display:flex; flex-direction:column; gap:10px; flex-shrink:0;">
             <button id="undoBtn" onclick="undo()" style="background: var(--warn); display:none; color:black;">UNDO LAST MATCH</button>
             <button onclick="endSession()" style="background: var(--accent); color: #0f172a;">END SESSION & VIEW STATS</button>
         </div>
@@ -104,8 +132,9 @@
 
     <div class="panel">
         <h2>Queue & History</h2>
-        <div id="qList" style="margin-bottom:15px;" ondragover="allowDrop(event)"></div>
-        <div id="hList" style="border-top:1px solid #334155; padding-top:10px;"></div>
+        <div class="scroll-content" id="qList" ondragover="allowDrop(event)" style="max-height: 45%;"></div>
+        <div style="height: 1px; background: #334155; margin: 10px 0; flex-shrink: 0;"></div>
+        <div class="scroll-content" id="hList" style="max-height: 45%;"></div>
     </div>
 </div>
 
@@ -113,7 +142,7 @@
     let players = [], queue = [], currentMatch = [], streaks = {}, winnersStaying = [], history = [], snapshots = [], stats = {};
     let draggedIdx = null;
 
-    function save() { localStorage.setItem('pb_logic_v12', JSON.stringify({players, queue, currentMatch, streaks, winnersStaying, history, snapshots, stats})); }
+    function save() { localStorage.setItem('pb_final_v13', JSON.stringify({players, queue, currentMatch, streaks, winnersStaying, history, snapshots, stats})); }
     
     function addP() {
         let name = document.getElementById('nameIn').value.trim();
@@ -128,14 +157,13 @@
     }
 
     function startSession() {
-        if (players.length < 4) return alert("Need 4 players.");
+        if (players.length < 4) return alert("Need at least 4 players.");
         queue = [...players]; history = []; streaks = {}; winnersStaying = []; currentMatch = []; snapshots = [];
         players.forEach(p => stats[p] = {w: 0, l: 0});
         document.getElementById('mainDisplay').style.display = 'block';
         render();
     }
 
-    // Drag and Drop Functions
     function handleDragStart(e, index) { draggedIdx = index; e.target.classList.add('dragging'); }
     function handleDragEnd(e) { e.target.classList.remove('dragging'); }
     function allowDrop(e) { e.preventDefault(); }
@@ -147,22 +175,18 @@
     }
 
     function render() {
-        document.getElementById('pList').innerHTML = players.map(p => `<div class="q-item" style="cursor:default;">${p} <button onclick="removePlayer('${p}')" style="background:var(--lose); color:white; border:none; padding:2px 8px; border-radius:4px;">X</button></div>`).join('');
-        
-        document.getElementById('qList').innerHTML = "<b>Queue (Drag to reorder):</b><br>" + queue.map((p, i) => `
-            <div class="q-item" draggable="true" 
-                 ondragstart="handleDragStart(event, ${i})" 
-                 ondragend="handleDragEnd(event)" 
-                 ondragover="allowDrop(event)" 
-                 ondrop="handleDrop(event, ${i})">
+        document.getElementById('pList').innerHTML = players.map(p => `<div class="q-item" style="cursor:default;">${p} <button onclick="removePlayer('${p}')" style="background:var(--lose); color:white; border:none; padding:4px 10px; border-radius:4px;">X</button></div>`).join('');
+        document.getElementById('qList').innerHTML = "<b>Queue (Drag to Reorder):</b><br>" + queue.map((p, i) => `
+            <div class="q-item" draggable="true" ondragstart="handleDragStart(event, ${i})" ondragend="handleDragEnd(event)" ondragover="allowDrop(event)" ondrop="handleDrop(event, ${i})">
                 <span>${i+1}. ${p}</span>
             </div>`).join('');
-
         document.getElementById('hList').innerHTML = "<b>History:</b><br>" + history.map((m, i) => `
             <div class="hist-item">
-                #${m.id}: ${m.s1}-${m.s2} ${i===0 ? `<button onclick="fixScore()" style="font-size:10px; padding:2px 5px; background:var(--warn); border:none; border-radius:3px;">FIX</button>` : ''}<br>
-                <span class="${m.s1>m.s2?'win-txt':'lose-txt'}">${m.t1.join('/')}</span> vs 
-                <span class="${m.s2>m.s1?'win-txt':'lose-txt'}">${m.t2.join('/')}</span>
+                <div style="display:flex; justify-content:space-between;"><b>Match #${m.id}</b> <span>${m.s1}-${m.s2}</span></div>
+                <div style="font-size:0.8rem; margin-top:4px;">
+                    <span class="${m.s1>m.s2?'win-txt':'lose-txt'}">${m.t1.join('/')}</span> vs <span class="${m.s2>m.s1?'win-txt':'lose-txt'}">${m.t2.join('/')}</span>
+                    ${i===0 ? `<button onclick="fixScore()" style="float:right; background:var(--warn); border:none; border-radius:3px; padding:2px 6px; font-size:0.7rem;">FIX</button>` : ''}
+                </div>
             </div>`).join('');
 
         if (currentMatch.length === 4) {
@@ -189,7 +213,7 @@
         }
         if (next.length < 4) {
             next.filter(p => p !== null).forEach(p => { if(!winnersStaying.includes(p)) queue.unshift(p) });
-            return alert("Empty Queue!");
+            return alert("Not enough players in queue!");
         }
         currentMatch = next; render();
     }
@@ -244,21 +268,29 @@
     }
 
     function endSession() {
-        const body = document.getElementById('statsBody'); body.innerHTML = "";
-        players.forEach(p => {
+        const body = document.getElementById('statsBody');
+        body.innerHTML = "";
+        
+        let sortedPlayers = [...players].sort((a, b) => {
+            let wA = stats[a].w, lA = stats[a].l, pctA = (wA + lA === 0) ? 0 : (wA / (wA + lA));
+            let wB = stats[b].w, lB = stats[b].l, pctB = (wB + lB === 0) ? 0 : (wB / (wB + lB));
+            return pctB - pctA;
+        });
+
+        sortedPlayers.forEach(p => {
             const w = stats[p]?.w || 0, l = stats[p]?.l || 0, total = w + l;
-            const pct = total === 0 ? "0%" : ((w/total)*100).toFixed(0) + "%";
-            body.innerHTML += `<tr><td>${p}</td><td>${w}</td><td>${l}</td><td>${pct}</td></tr>`;
+            const pct = total === 0 ? 0 : Math.round((w / total) * 100);
+            body.innerHTML += `<tr><td>${p}</td><td>${w}</td><td>${l}</td><td>${pct}%</td></tr>`;
         });
         document.getElementById('statsModal').style.display = 'flex';
     }
 
     function resetAll() {
-        if(confirm("Wipe everything?")) { localStorage.removeItem('pb_logic_v12'); location.reload(); }
+        if(confirm("Are you sure? This will delete everything.")) { localStorage.removeItem('pb_final_v13'); location.reload(); }
     }
 
     window.onload = () => {
-        let saved = localStorage.getItem('pb_logic_v12');
+        let saved = localStorage.getItem('pb_final_v13');
         if (saved) {
             let d = JSON.parse(saved);
             players = d.players; queue = d.queue; currentMatch = d.currentMatch; streaks = d.streaks;
