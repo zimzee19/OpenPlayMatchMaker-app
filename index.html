@@ -4,10 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#0f172a">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="manifest" id="pwa-manifest">
-
     <title>Pickleball Open Play Match Maker</title>
     <style>
         :root { --bg: #0f172a; --card: #1e293b; --accent: #38bdf8; --text: #f1f5f9; --win: #22c55e; --lose: #ef4444; }
@@ -17,7 +13,6 @@
         .rules-box { background: #1a2233; border: 1px solid #334155; border-radius: 8px; padding: 12px; margin: 10px; text-align: left; max-width: 600px; }
         .rules-box h3 { margin: 0 0 5px 0; font-size: 0.8rem; color: var(--accent); text-transform: uppercase; }
         .rules-box ul { margin: 0; padding-left: 18px; color: #94a3b8; font-size: 0.85rem; }
-        .rules-box li { margin-bottom: 3px; list-style: decimal; }
         .dashboard { display: grid; grid-template-columns: 1fr; gap: 15px; width: 100%; max-width: 1250px; }
         @media (min-width: 1024px) { .dashboard { grid-template-columns: 320px 1fr 320px; align-items: start; } }
         .panel { background: var(--card); padding: 15px; border-radius: 12px; border: 1px solid #334155; display: flex; flex-direction: column; }
@@ -44,11 +39,11 @@
     <div class="header-section">
         <h1>Pickleball Open Play Match Maker</h1>
         <div class="rules-box">
-            <h3>Rules:</h3>
+            <h3>Rules</h3>
             <ul>
-                <li>1. Queue follows the order in which players are added.</li>
-                <li>2. Winners stay but will split (play against each other) and next 2 players in queue will join.</li>
-                <li>3. Two (2) maximum consecutive games (regardless of win).</li>
+                <li>Queue follows order names are added.</li>
+                <li>Winners split; next 2 in queue join.</li>
+                <li>2 game max (regardless of result).</li>
             </ul>
         </div>
     </div>
@@ -97,30 +92,61 @@
     </div>
 
 <script>
-    // PWA Manifest Configuration
-    const myManifest = {
-      "short_name": "PB Match",
-      "name": "Pickleball Match Maker",
-      "icons": [{ "src": "https://cdn-icons-png.flaticon.com/512/2001/2001300.png", "sizes": "512x512", "type": "image/png" }],
-      "start_url": ".",
-      "display": "standalone",
-      "theme_color": "#0f172a",
-      "background_color": "#0f172a"
-    };
-    const stringManifest = JSON.stringify(myManifest);
-    const blob = new Blob([stringManifest], {type: 'application/json'});
-    const manifestURL = URL.createObjectURL(blob);
-    document.querySelector('#pwa-manifest').setAttribute('href', manifestURL);
+    // State variables
+    let players = [], queue = [], currentWinners = [], streaks = {}, currentMatch = [], isLive = false, matchCounter = 0, winCount = {}, lossCount = {}, historyLog = [];
 
-    // Logic Implementation
-    let players = [], queue = [], currentWinners = [], streaks = {}, currentMatch = [], isLive = false, matchCounter = 0, winCount = {}, lossCount = {};
+    // --- STORAGE ENGINE ---
+    function saveToStorage() {
+        const data = { players, queue, currentWinners, streaks, currentMatch, isLive, matchCounter, winCount, lossCount, historyLog };
+        localStorage.setItem('pickleball_data', JSON.stringify(data));
+    }
 
+    function loadFromStorage() {
+        const saved = localStorage.getItem('pickleball_data');
+        if (!saved) return;
+        const data = JSON.parse(saved);
+        players = data.players || [];
+        queue = data.queue || [];
+        currentWinners = data.currentWinners || [];
+        streaks = data.streaks || {};
+        currentMatch = data.currentMatch || [];
+        isLive = data.isLive || false;
+        matchCounter = data.matchCounter || 0;
+        winCount = data.winCount || {};
+        lossCount = data.lossCount || {};
+        historyLog = data.historyLog || [];
+        
+        renderPlayerList();
+        updateQueueUI();
+        renderHistory();
+        if (isLive && currentMatch.length === 4) {
+            document.getElementById('matchUI').style.display = 'block';
+            document.getElementById('waitText').style.display = 'none';
+            document.getElementById('endBtn').style.display = 'block';
+            ['p1','p2','p3','p4'].forEach((id, i) => document.getElementById(id).textContent = currentMatch[i]);
+        }
+    }
+
+    // --- UI UPDATES ---
+    function renderPlayerList() {
+        document.getElementById('pList').innerHTML = players.map(p => `<li>${p} <button class="del-btn" onclick="removePlayer('${p}')">×</button></li>`).join('');
+    }
+
+    function updateQueueUI() {
+        document.getElementById('qList').innerHTML = queue.map((p, i) => `<li><span>${i+1}. ${p}</span> <button class="del-btn" onclick="removePlayer('${p}')">×</button></li>`).join('');
+    }
+
+    function renderHistory() {
+        document.getElementById('hList').innerHTML = historyLog.map(item => `<div class="hist-item">${item}</div>`).join('');
+    }
+
+    // --- LOGIC ---
     function addPlayer() {
         const input = document.getElementById('nameInput');
         const name = input.value.trim();
         if (!name || players.includes(name)) return;
         players.push(name); winCount[name] = 0; lossCount[name] = 0; queue.push(name);
-        renderPlayerList(); updateQueueUI();
+        renderPlayerList(); updateQueueUI(); saveToStorage();
         input.value = ""; input.focus();
     }
 
@@ -128,11 +154,7 @@
         players = players.filter(p => p !== name); queue = queue.filter(p => p !== name);
         currentWinners = currentWinners.filter(p => p !== name); delete streaks[name];
         if (currentMatch.includes(name)) setupNextMatch();
-        renderPlayerList(); updateQueueUI();
-    }
-
-    function renderPlayerList() {
-        document.getElementById('pList').innerHTML = players.map(p => `<li>${p} <button class="del-btn" onclick="removePlayer('${p}')">×</button></li>`).join('');
+        renderPlayerList(); updateQueueUI(); saveToStorage();
     }
 
     function setupNextMatch() {
@@ -143,19 +165,17 @@
             else { if (players.includes(p)) queue.push(p); delete streaks[p]; }
         });
         while (playersToPlay.length < 4 && queue.length > 0) playersToPlay.push(queue.shift());
+        
         if (playersToPlay.length < 4) {
             document.getElementById('matchUI').style.display = 'none';
             document.getElementById('waitText').style.display = 'block';
-            document.getElementById('waitText').innerText = "Not enough players.";
-            isLive = false; return;
+            document.getElementById('waitText').innerText = "Waiting for players...";
+            isLive = false; saveToStorage(); return;
         }
-        currentMatch = (currentWinners.length === 2) ? [playersToPlay[0], playersToPlay[2], playersToPlay[1], playersToPlay[3]] : playersToPlay;
+        
+        currentMatch = (currentWinners.length === 2 && playersToPlay.includes(currentWinners[0])) ? [playersToPlay[0], playersToPlay[2], playersToPlay[1], playersToPlay[3]] : playersToPlay;
         ['p1','p2','p3','p4'].forEach((id, i) => document.getElementById(id).textContent = currentMatch[i]);
-        updateQueueUI();
-    }
-
-    function updateQueueUI() {
-        document.getElementById('qList').innerHTML = queue.map((p, i) => `<li><span>${i+1}. ${p}</span> <button class="del-btn" onclick="removePlayer('${p}')">×</button></li>`).join('');
+        updateQueueUI(); saveToStorage();
     }
 
     document.getElementById('addBtn').onclick = addPlayer;
@@ -163,8 +183,8 @@
 
     document.getElementById('startBtn').onclick = function() {
         if (players.length < 4) return alert("Need 4 players!");
-        isLive = true; matchCounter = 0;
-        document.getElementById('hList').innerHTML = "";
+        isLive = true; matchCounter = 0; historyLog = [];
+        players.forEach(p => { winCount[p] = 0; lossCount[p] = 0; });
         document.getElementById('matchUI').style.display = 'block';
         document.getElementById('waitText').style.display = 'none';
         document.getElementById('endBtn').style.display = 'block';
@@ -178,9 +198,11 @@
         const teamA = [currentMatch[0], currentMatch[1]], teamB = [currentMatch[2], currentMatch[3]];
         let winners = s1 > s2 ? teamA : teamB, losers = s1 > s2 ? teamB : teamA;
         winners.forEach(p => winCount[p]++); losers.forEach(p => lossCount[p]++);
-        const div = document.createElement('div'); div.className = 'hist-item';
-        div.innerHTML = `<span class="score-display">#${matchCounter}: ${s1}-${s2}</span><span class="${winners.includes(teamA[0])?'winner-bold':'loser-red'}">${teamA[0]} & ${teamA[1]}</span> vs <span class="${winners.includes(teamB[0])?'winner-bold':'loser-red'}">${teamB[0]} & ${teamB[1]}</span>`;
-        document.getElementById('hList').prepend(div);
+        
+        const logEntry = `<span class="score-display">#${matchCounter}: ${s1}-${s2}</span><span class="${winners.includes(teamA[0])?'winner-bold':'loser-red'}">${teamA[0]} & ${teamA[1]}</span> vs <span class="${winners.includes(teamB[0])?'winner-bold':'loser-red'}">${teamB[0]} & ${teamB[1]}</span>`;
+        historyLog.unshift(logEntry);
+        renderHistory();
+        
         losers.forEach(p => queue.push(p)); currentWinners = winners;
         currentWinners.forEach(p => streaks[p] = (streaks[p] || 0) + 1);
         document.getElementById('s1').value = ""; document.getElementById('s2').value = "";
@@ -190,12 +212,20 @@
     document.getElementById('endBtn').onclick = function() {
         isLive = false; document.getElementById('matchUI').style.display = 'none'; document.getElementById('tallyUI').style.display = 'block';
         document.getElementById('tallyBody').innerHTML = players.map(p => ({name: p, w: winCount[p], l: lossCount[p]})).sort((a,b)=>b.w-a.w).map(i => `<tr><td>${i.name}</td><td>${i.w}</td><td>${i.l}</td></tr>`).join('');
+        saveToStorage();
     };
 
-    document.getElementById('resumeBtn').onclick = function() { isLive = true; document.getElementById('tallyUI').style.display = 'none'; document.getElementById('matchUI').style.display = 'block'; };
+    document.getElementById('resumeBtn').onclick = function() { isLive = true; document.getElementById('tallyUI').style.display = 'none'; document.getElementById('matchUI').style.display = 'block'; saveToStorage(); };
 
-    document.getElementById('resetBtn').onclick = function() { if(confirm("Reset?")) location.reload(); };
+    document.getElementById('resetBtn').onclick = function() { 
+        if(confirm("Wipe all data? This cannot be undone.")) {
+            localStorage.removeItem('pickleball_data');
+            location.reload();
+        }
+    };
+
+    // Initialize on load
+    window.onload = loadFromStorage;
 </script>
 </body>
-
 </html>
