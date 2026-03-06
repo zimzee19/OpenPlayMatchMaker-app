@@ -25,7 +25,7 @@
         ul { list-style: none; padding: 0; margin: 0; }
         li { background: #334155; padding: 10px 12px; margin-bottom: 8px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; }
         .del-btn { background: var(--lose); color: white; padding: 8px 12px; font-size: 1rem; border-radius: 6px; border: none; }
-        .edit-btn { background: #fbbf24; color: #000; padding: 4px 8px; font-size: 0.7rem; border-radius: 4px; border: none; margin-left: 10px; font-weight: bold; }
+        .score-btn { background: #fbbf24; color: #000; padding: 4px 8px; font-size: 0.7rem; border-radius: 4px; border: none; font-weight: bold; cursor: pointer; }
         .hist-item { background: #1a2233; border-left: 4px solid var(--accent); padding: 10px; margin-bottom: 10px; border-radius: 6px; font-size: 0.9rem; }
         .winner-bold { font-weight: 800; color: var(--win); }
         .loser-red { color: var(--lose); font-weight: bold; }
@@ -42,9 +42,9 @@
         <div class="rules-box">
             <h3>Rules</h3>
             <ul>
-                <li>1. Queue follows order names are added.</li>
-                <li>2. Winners stay but split (play against each other), next 2 in queue join.</li>
-                <li>3. Maximum of two (2) consecutive games (regardless of result).</li>
+                <li>Queue follows order names are added.</li>
+                <li>Winners split; next 2 in queue join.</li>
+                <li>2 game max (regardless of result).</li>
             </ul>
         </div>
     </div>
@@ -99,4 +99,183 @@
     </div>
 
 <script>
-    let players = [], queue = [], currentWinners = [], streaks = {}, currentMatch = [], isLive = false, matchCounter = 0, winCount = {}, lossCount = {}, historyLog = [], isCourtOccupied
+    let players = [], queue = [], currentWinners = [], streaks = {}, currentMatch = [], isLive = false, matchCounter = 0, winCount = {}, lossCount = {}, historyLog = [], isCourtOccupied = false;
+
+    function saveToStorage() {
+        const data = { players, queue, currentWinners, streaks, currentMatch, isLive, matchCounter, winCount, lossCount, historyLog, isCourtOccupied };
+        localStorage.setItem('pickleball_data', JSON.stringify(data));
+    }
+
+    function loadFromStorage() {
+        const saved = localStorage.getItem('pickleball_data');
+        if (!saved) return;
+        const data = JSON.parse(saved);
+        players = data.players || [];
+        queue = data.queue || [];
+        currentWinners = data.currentWinners || [];
+        streaks = data.streaks || {};
+        currentMatch = data.currentMatch || [];
+        isLive = data.isLive || false;
+        matchCounter = data.matchCounter || 0;
+        winCount = data.winCount || {};
+        lossCount = data.lossCount || {};
+        historyLog = data.historyLog || [];
+        isCourtOccupied = data.isCourtOccupied || false;
+        
+        renderPlayerList(); updateQueueUI(); renderHistory();
+        if (isLive) {
+            document.getElementById('matchUI').style.display = 'block';
+            document.getElementById('waitText').style.display = 'none';
+            document.getElementById('endBtn').style.display = 'block';
+            if (isCourtOccupied && currentMatch.length === 4) showCourt(); else showIdle();
+        }
+    }
+
+    function showCourt() {
+        document.getElementById('courtDisplay').style.display = 'block';
+        document.getElementById('idleDisplay').style.display = 'none';
+        ['p1','p2','p3','p4'].forEach((id, i) => document.getElementById(id).textContent = currentMatch[i]);
+        isCourtOccupied = true;
+    }
+
+    function showIdle() {
+        document.getElementById('courtDisplay').style.display = 'none';
+        document.getElementById('idleDisplay').style.display = 'block';
+        isCourtOccupied = false;
+    }
+
+    function renderPlayerList() {
+        document.getElementById('pList').innerHTML = players.map(p => `<li>${p} <button class="del-btn" onclick="removePlayer('${p}')">×</button></li>`).join('');
+    }
+
+    function updateQueueUI() {
+        document.getElementById('qList').innerHTML = queue.map((p, i) => `<li><span>${i+1}. ${p}</span> <button class="del-btn" onclick="removePlayer('${p}')">×</button></li>`).join('');
+    }
+
+    function renderHistory() {
+        document.getElementById('hList').innerHTML = historyLog.map((m, idx) => `
+            <div class="hist-item">
+                <span class="score-display">#${m.num}: ${m.s1}-${m.s2} <button class="score-btn" onclick="quickEditScore(${idx})">EDIT SCORE</button></span>
+                <span class="${m.s1 > m.s2 ? 'winner-bold' : 'loser-red'}">${m.t1[0]} & ${m.t1[1]}</span> vs 
+                <span class="${m.s2 > m.s1 ? 'winner-bold' : 'loser-red'}">${m.t2[0]} & ${m.t2[1]}</span>
+            </div>
+        `).join('');
+    }
+
+    function quickEditScore(index) {
+        const m = historyLog[index];
+        const newS1 = prompt(`New score for ${m.t1[0]}/${m.t1[1]}:`, m.s1);
+        const newS2 = prompt(`New score for ${m.t2[0]}/${m.t2[1]}:`, m.s2);
+        
+        if (newS1 === null || newS2 === null || isNaN(newS1) || isNaN(newS2)) return;
+
+        // Subtract old result stats
+        const oldWinners = m.s1 > m.s2 ? m.t1 : m.t2;
+        const oldLosers = m.s1 > m.s2 ? m.t2 : m.t1;
+        oldWinners.forEach(p => { if(winCount[p]>0) winCount[p]--; });
+        oldLosers.forEach(p => { if(lossCount[p]>0) lossCount[p]--; });
+
+        // Update history object
+        m.s1 = parseInt(newS1);
+        m.s2 = parseInt(newS2);
+
+        // Add new result stats
+        const newWinners = m.s1 > m.s2 ? m.t1 : m.t2;
+        const newLosers = m.s1 > m.s2 ? m.t2 : m.t1;
+        newWinners.forEach(p => { winCount[p] = (winCount[p] || 0) + 1; });
+        newLosers.forEach(p => { lossCount[p] = (lossCount[p] || 0) + 1; });
+
+        renderHistory();
+        saveToStorage();
+    }
+
+    function pairNextMatch() {
+        if (!isLive) return;
+        let playersToPlay = [];
+        currentWinners.forEach(p => {
+            if (players.includes(p) && (streaks[p] || 0) < 2) playersToPlay.push(p);
+            else { if (players.includes(p)) queue.push(p); delete streaks[p]; }
+        });
+        while (playersToPlay.length < 4 && queue.length > 0) playersToPlay.push(queue.shift());
+        
+        if (playersToPlay.length < 4) {
+            playersToPlay.forEach(p => queue.unshift(p));
+            alert("Not enough players!"); return;
+        }
+        
+        if (currentWinners.length === 2 && playersToPlay.includes(currentWinners[0]) && playersToPlay.includes(currentWinners[1])) {
+            currentMatch = [playersToPlay[0], playersToPlay[2], playersToPlay[1], playersToPlay[3]];
+        } else {
+            currentMatch = playersToPlay;
+        }
+
+        showCourt(); updateQueueUI(); saveToStorage();
+    }
+
+    function addPlayer() {
+        const input = document.getElementById('nameInput');
+        const name = input.value.trim();
+        if (!name || players.includes(name)) return;
+        players.push(name); winCount[name] = 0; lossCount[name] = 0; queue.push(name);
+        renderPlayerList(); updateQueueUI(); saveToStorage();
+        input.value = ""; input.focus();
+    }
+
+    function removePlayer(name) {
+        players = players.filter(p => p !== name); queue = queue.filter(p => p !== name);
+        currentWinners = currentWinners.filter(p => p !== name); delete streaks[name];
+        if (currentMatch.includes(name)) { currentMatch = []; showIdle(); }
+        renderPlayerList(); updateQueueUI(); saveToStorage();
+    }
+
+    document.getElementById('addBtn').onclick = addPlayer;
+    document.getElementById('pairBtn').onclick = pairNextMatch;
+    document.getElementById('nameInput').onkeypress = (e) => { if(e.key === 'Enter') addPlayer(); };
+
+    document.getElementById('startBtn').onclick = function() {
+        if (players.length < 4) return alert("Need 4 players!");
+        isLive = true; matchCounter = 0; historyLog = [];
+        players.forEach(p => { winCount[p] = 0; lossCount[p] = 0; streaks[p] = 0; });
+        document.getElementById('matchUI').style.display = 'block';
+        document.getElementById('waitText').style.display = 'none';
+        document.getElementById('endBtn').style.display = 'block';
+        showIdle(); saveToStorage();
+    };
+
+    document.getElementById('submitBtn').onclick = function() {
+        const s1 = parseInt(document.getElementById('s1').value), s2 = parseInt(document.getElementById('s2').value);
+        if (isNaN(s1) || isNaN(s2)) return alert("Enter scores!");
+        
+        const t1 = [currentMatch[0], currentMatch[1]], t2 = [currentMatch[2], currentMatch[3]];
+        let winners = s1 > s2 ? t1 : t2, losers = s1 > s2 ? t2 : t1;
+        
+        winners.forEach(p => winCount[p]++); losers.forEach(p => lossCount[p]++);
+        
+        matchCounter++;
+        historyLog.unshift({ num: matchCounter, s1, s2, t1, t2 });
+        renderHistory();
+        
+        losers.forEach(p => queue.push(p)); 
+        currentWinners = winners;
+        currentWinners.forEach(p => streaks[p] = (streaks[p] || 0) + 1);
+        
+        document.getElementById('s1').value = ""; document.getElementById('s2').value = "";
+        currentMatch = []; showIdle(); saveToStorage();
+    };
+
+    document.getElementById('endBtn').onclick = function() {
+        isLive = false; document.getElementById('matchUI').style.display = 'none'; document.getElementById('tallyUI').style.display = 'block';
+        document.getElementById('tallyBody').innerHTML = players.map(p => ({name: p, w: winCount[p], l: lossCount[p]})).sort((a,b)=>b.w-a.w).map(i => `<tr><td>${i.name}</td><td>${i.w}</td><td>${i.l}</td></tr>`).join('');
+        saveToStorage();
+    };
+
+    document.getElementById('resumeBtn').onclick = function() { isLive = true; document.getElementById('tallyUI').style.display = 'none'; document.getElementById('matchUI').style.display = 'block'; saveToStorage(); };
+
+    document.getElementById('resetBtn').onclick = function() { 
+        if(confirm("Wipe all data?")) { localStorage.removeItem('pickleball_data'); location.reload(); }
+    };
+
+    window.onload = loadFromStorage;
+</script>
+</body>
+</html>
