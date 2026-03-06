@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#0f172a">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" id="pwa-manifest">
+
+    <title>Pickleball Open Play Match Maker</title>
+    <style>
+        :root { --bg: #0f172a; --card: #1e293b; --accent: #38bdf8; --text: #f1f5f9; --win: #22c55e; --lose: #ef4444; }
+        body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); padding: 10px; display: flex; flex-direction: column; align-items: center; margin: 0; }
+        .header-section { text-align: center; margin-bottom: 15px; width: 100%; max-width: 1250px; }
+        h1 { font-size: 1.5rem; padding: 0 10px; }
+        .rules-box { background: #1a2233; border: 1px solid #334155; border-radius: 8px; padding: 12px; margin: 10px; text-align: left; max-width: 600px; }
+        .rules-box h3 { margin: 0 0 5px 0; font-size: 0.8rem; color: var(--accent); text-transform: uppercase; }
+        .rules-box ul { margin: 0; padding-left: 18px; color: #94a3b8; font-size: 0.85rem; }
+        .rules-box li { margin-bottom: 3px; list-style: decimal; }
+        .dashboard { display: grid; grid-template-columns: 1fr; gap: 15px; width: 100%; max-width: 1250px; }
+        @media (min-width: 1024px) { .dashboard { grid-template-columns: 320px 1fr 320px; align-items: start; } }
+        .panel { background: var(--card); padding: 15px; border-radius: 12px; border: 1px solid #334155; display: flex; flex-direction: column; }
+        h2 { color: var(--accent); margin-top: 0; font-size: 0.9rem; text-transform: uppercase; border-bottom: 1px solid #334155; padding-bottom: 8px; }
+        .scroll-area { overflow-y: auto; flex-grow: 1; padding-right: 5px; min-height: 100px; max-height: 400px; }
+        .input-group { display: flex; gap: 8px; margin-bottom: 15px; }
+        input { flex: 1; padding: 12px; background: #0f172a; border: 1px solid #334155; color: white; border-radius: 6px; font-size: 1rem; }
+        button { padding: 12px; background: var(--accent); border: none; font-weight: bold; cursor: pointer; border-radius: 8px; color: #0f172a; font-size: 0.9rem; }
+        .match-area { text-align: center; border: 2px solid #334155; padding: 15px; border-radius: 12px; background: #1a2233; }
+        ul { list-style: none; padding: 0; margin: 0; }
+        li { background: #334155; padding: 10px 12px; margin-bottom: 8px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; }
+        .del-btn { background: var(--lose); color: white; padding: 8px 12px; font-size: 1rem; border-radius: 6px; border: none; }
+        .hist-item { background: #1a2233; border-left: 4px solid var(--accent); padding: 10px; margin-bottom: 10px; border-radius: 6px; font-size: 0.9rem; }
+        .winner-bold { font-weight: 800; color: var(--win); }
+        .loser-red { color: var(--lose); font-weight: bold; }
+        .score-display { display: block; font-size: 0.8rem; color: #64748b; font-weight: bold; }
+        .footer-btns { flex-shrink: 0; margin-top: 15px; display: flex; flex-direction: column; gap: 8px; }
+        .tally-table { width: 100%; border-collapse: collapse; }
+        .tally-table th, .tally-table td { text-align: left; padding: 10px 8px; border-bottom: 1px solid #334155; }
+    </style>
+</head>
+<body>
+
+    <div class="header-section">
+        <h1>Pickleball Open Play Match Maker</h1>
+        <div class="rules-box">
+            <h3>Rules</h3>
+            <ul>
+                <li>Queue follows order names are added.</li>
+                <li>Winners split; next 2 in queue join.</li>
+                <li>2 game max (regardless of result).</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="dashboard">
+        <div class="panel">
+            <h2>1. Players</h2>
+            <div class="input-group">
+                <input type="text" id="nameInput" placeholder="Name..." enterkeyhint="done">
+                <button id="addBtn">ADD</button>
+            </div>
+            <div class="scroll-area"><ul id="pList"></ul></div>
+            <div class="footer-btns">
+                <button id="startBtn" style="background: var(--win); color: white;">START MATCHES</button>
+                <button id="endBtn" style="background: var(--lose); color: white; display: none;">END SESSION</button>
+                <button id="resetBtn" style="background: #475569; color: white;">RESET ALL</button>
+            </div>
+        </div>
+
+        <div class="panel">
+            <h2 id="centerTitle">2. Active Match</h2>
+            <div id="matchUI" style="display:none;">
+                <div class="match-area">
+                    <div style="margin-bottom:10px;"><b>Team 1</b><br><span id="p1"></span> & <span id="p2"></span></div>
+                    <div style="color: #64748b; font-weight: bold; font-size: 0.8rem;">VS</div>
+                    <div style="margin-bottom:15px;"><b>Team 2</b><br><span id="p3"></span> & <span id="p4"></span></div>
+                    <div style="margin-bottom: 20px; display: flex; justify-content: center; gap: 15px;">
+                        <input type="number" id="s1" placeholder="Sc 1" style="width: 70px;">
+                        <input type="number" id="s2" placeholder="Sc 2" style="width: 70px;">
+                    </div>
+                    <button id="submitBtn" style="width:100%;">SUBMIT SCORE</button>
+                </div>
+            </div>
+            <div id="tallyUI" style="display:none;" class="scroll-area">
+                <table class="tally-table"><thead><tr><th>Player</th><th>W</th><th>L</th></tr></thead><tbody id="tallyBody"></tbody></table>
+                <button id="resumeBtn" style="width:100%; margin-top:20px; background: #475569; color:white;">RESUME</button>
+            </div>
+            <p id="waitText" style="text-align:center; color: #64748b; margin-top: 30px;">Add players to begin.</p>
+        </div>
+
+        <div class="panel">
+            <h2>Queue & History</h2>
+            <div class="scroll-area" style="max-height: 180px;"><ul id="qList"></ul></div>
+            <div id="hList" class="scroll-area" style="border-top: 1px solid #334155; padding-top: 10px;"></div>
+        </div>
+    </div>
+
+<script>
+    // PWA Manifest Configuration
+    const myManifest = {
+      "short_name": "PB Match",
+      "name": "Pickleball Match Maker",
+      "icons": [{ "src": "https://cdn-icons-png.flaticon.com/512/2001/2001300.png", "sizes": "512x512", "type": "image/png" }],
+      "start_url": ".",
+      "display": "standalone",
+      "theme_color": "#0f172a",
+      "background_color": "#0f172a"
+    };
+    const stringManifest = JSON.stringify(myManifest);
+    const blob = new Blob([stringManifest], {type: 'application/json'});
+    const manifestURL = URL.createObjectURL(blob);
+    document.querySelector('#pwa-manifest').setAttribute('href', manifestURL);
+
+    // Logic Implementation
+    let players = [], queue = [], currentWinners = [], streaks = {}, currentMatch = [], isLive = false, matchCounter = 0, winCount = {}, lossCount = {};
+
+    function addPlayer() {
+        const input = document.getElementById('nameInput');
+        const name = input.value.trim();
+        if (!name || players.includes(name)) return;
+        players.push(name); winCount[name] = 0; lossCount[name] = 0; queue.push(name);
+        renderPlayerList(); updateQueueUI();
+        input.value = ""; input.focus();
+    }
+
+    function removePlayer(name) {
+        players = players.filter(p => p !== name); queue = queue.filter(p => p !== name);
+        currentWinners = currentWinners.filter(p => p !== name); delete streaks[name];
+        if (currentMatch.includes(name)) setupNextMatch();
+        renderPlayerList(); updateQueueUI();
+    }
+
+    function renderPlayerList() {
+        document.getElementById('pList').innerHTML = players.map(p => `<li>${p} <button class="del-btn" onclick="removePlayer('${p}')">×</button></li>`).join('');
+    }
+
+    function setupNextMatch() {
+        if (!isLive) return;
+        let playersToPlay = [];
+        currentWinners.forEach(p => {
+            if (players.includes(p) && (streaks[p] || 0) < 2) playersToPlay.push(p);
+            else { if (players.includes(p)) queue.push(p); delete streaks[p]; }
+        });
+        while (playersToPlay.length < 4 && queue.length > 0) playersToPlay.push(queue.shift());
+        if (playersToPlay.length < 4) {
+            document.getElementById('matchUI').style.display = 'none';
+            document.getElementById('waitText').style.display = 'block';
+            document.getElementById('waitText').innerText = "Not enough players.";
+            isLive = false; return;
+        }
+        currentMatch = (currentWinners.length === 2) ? [playersToPlay[0], playersToPlay[2], playersToPlay[1], playersToPlay[3]] : playersToPlay;
+        ['p1','p2','p3','p4'].forEach((id, i) => document.getElementById(id).textContent = currentMatch[i]);
+        updateQueueUI();
+    }
+
+    function updateQueueUI() {
+        document.getElementById('qList').innerHTML = queue.map((p, i) => `<li><span>${i+1}. ${p}</span> <button class="del-btn" onclick="removePlayer('${p}')">×</button></li>`).join('');
+    }
+
+    document.getElementById('addBtn').onclick = addPlayer;
+    document.getElementById('nameInput').onkeypress = (e) => { if(e.key === 'Enter') addPlayer(); };
+
+    document.getElementById('startBtn').onclick = function() {
+        if (players.length < 4) return alert("Need 4 players!");
+        isLive = true; matchCounter = 0;
+        document.getElementById('hList').innerHTML = "";
+        document.getElementById('matchUI').style.display = 'block';
+        document.getElementById('waitText').style.display = 'none';
+        document.getElementById('endBtn').style.display = 'block';
+        setupNextMatch();
+    };
+
+    document.getElementById('submitBtn').onclick = function() {
+        const s1 = parseInt(document.getElementById('s1').value), s2 = parseInt(document.getElementById('s2').value);
+        if (isNaN(s1) || isNaN(s2)) return alert("Enter scores!");
+        matchCounter++;
+        const teamA = [currentMatch[0], currentMatch[1]], teamB = [currentMatch[2], currentMatch[3]];
+        let winners = s1 > s2 ? teamA : teamB, losers = s1 > s2 ? teamB : teamA;
+        winners.forEach(p => winCount[p]++); losers.forEach(p => lossCount[p]++);
+        const div = document.createElement('div'); div.className = 'hist-item';
+        div.innerHTML = `<span class="score-display">#${matchCounter}: ${s1}-${s2}</span><span class="${winners.includes(teamA[0])?'winner-bold':'loser-red'}">${teamA[0]} & ${teamA[1]}</span> vs <span class="${winners.includes(teamB[0])?'winner-bold':'loser-red'}">${teamB[0]} & ${teamB[1]}</span>`;
+        document.getElementById('hList').prepend(div);
+        losers.forEach(p => queue.push(p)); currentWinners = winners;
+        currentWinners.forEach(p => streaks[p] = (streaks[p] || 0) + 1);
+        document.getElementById('s1').value = ""; document.getElementById('s2').value = "";
+        setupNextMatch();
+    };
+
+    document.getElementById('endBtn').onclick = function() {
+        isLive = false; document.getElementById('matchUI').style.display = 'none'; document.getElementById('tallyUI').style.display = 'block';
+        document.getElementById('tallyBody').innerHTML = players.map(p => ({name: p, w: winCount[p], l: lossCount[p]})).sort((a,b)=>b.w-a.w).map(i => `<tr><td>${i.name}</td><td>${i.w}</td><td>${i.l}</td></tr>`).join('');
+    };
+
+    document.getElementById('resumeBtn').onclick = function() { isLive = true; document.getElementById('tallyUI').style.display = 'none'; document.getElementById('matchUI').style.display = 'block'; };
+
+    document.getElementById('resetBtn').onclick = function() { if(confirm("Reset?")) location.reload(); };
+</script>
+</body>
+</html>
