@@ -53,9 +53,9 @@
     <h1>2v2 Pickleball Open Play Match Maker</h1>
     <div class="rules-list">
         <ul>
-            <li>1. Queue follows order names are added.</li>
-            <li>2. Winners stay but split (play against each other), next 2 in queue join.</li>
-            <li>3. Maximum of two (2) consecutive games (regardless of result).</li>
+            <li>Queue follows order names are added.</li>
+            <li>Winners stay but split (play against each other), next 2 in queue join.</li>
+            <li>Maximum of two (2) consecutive games (regardless of result).</li>
         </ul>
     </div>
 </div>
@@ -115,8 +115,8 @@
                 <span class="player-slot" id="p3" onclick="openSwap(3)"></span><span id="s3" class="streak-fire"></span>
             </div>
             <div style="display:flex; justify-content:center; gap:15px; margin-bottom:20px;">
-                <input type="number" id="sc1" placeholder="T1" style="width:70px; text-align:center; font-size:1.2rem;">
-                <input type="number" id="sc2" placeholder="T2" style="width:70px; text-align:center; font-size:1.2rem;">
+                <input type="number" id="sc1" placeholder="Team 1" style="width:70px; text-align:center; font-size:1.2rem;">
+                <input type="number" id="sc2" placeholder="Team 2" style="width:70px; text-align:center; font-size:1.2rem;">
             </div>
             <button onclick="submitScore()" style="width:100%; padding:15px; font-size:1rem;">SUBMIT SCORE</button>
         </div>
@@ -245,7 +245,7 @@
 
     function fixScore() {
         let m = history[0];
-        let n1 = prompt("Correct T1 Score:", m.s1), n2 = prompt("Correct T2 Score:", m.s2);
+        let n1 = prompt("Correct Team 1 Score:", m.s1), n2 = prompt("Correct Team 2 Score:", m.s2);
         if (n1 === null || n2 === null) return;
         undo(); document.getElementById('sc1').value = n1; document.getElementById('sc2').value = n2; submitScore();
     }
@@ -302,3 +302,4 @@
 </script>
 </body>
 </html>
+
