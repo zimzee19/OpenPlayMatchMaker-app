@@ -26,7 +26,6 @@
         .winner-bold { font-weight: 800; color: var(--win); }
         .loser-red { color: var(--lose); font-weight: bold; }
         .footer-btns { margin-top: 15px; display: flex; flex-direction: column; gap: 8px; }
-        
         #swapModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 100; justify-content: center; align-items: center; }
         .modal-content { background: var(--card); padding: 25px; border-radius: 12px; width: 90%; max-width: 400px; text-align: center; border: 1px solid #334155; }
     </style>
@@ -38,7 +37,7 @@
             <h3 id="swapTitle" style="margin-top:0">Swap Player</h3>
             <select id="swapSelect"></select>
             <div style="display:flex; gap:10px; margin-top:20px;">
-                <button id="confirmSwap" style="flex:1; background: var(--win); color:white">SWAP</button>
+                <button id="confirmSwap" style="flex:1; background: var(--win); color:white">CONFIRM</button>
                 <button onclick="closeSwapModal()" style="flex:1; background: #475569; color:white">CANCEL</button>
             </div>
         </div>
@@ -110,11 +109,11 @@
     let players = [], queue = [], currentWinners = [], streaks = {}, currentMatch = [], isLive = false, matchCounter = 0, winCount = {}, lossCount = {}, historyLog = [], isCourtOccupied = false, fullSnapshot = null, activeSwapIndex = null;
 
     function save() {
-        localStorage.setItem('pb_match_v5', JSON.stringify({ players, queue, currentWinners, streaks, currentMatch, isLive, matchCounter, winCount, lossCount, historyLog, isCourtOccupied, fullSnapshot }));
+        localStorage.setItem('pb_match_v6', JSON.stringify({ players, queue, currentWinners, streaks, currentMatch, isLive, matchCounter, winCount, lossCount, historyLog, isCourtOccupied, fullSnapshot }));
     }
 
     function load() {
-        const data = JSON.parse(localStorage.getItem('pb_match_v5'));
+        const data = JSON.parse(localStorage.getItem('pb_match_v6'));
         if (data) {
             Object.assign(window, data);
             renderAll();
@@ -168,12 +167,22 @@
         updateQueueUI(); save();
     }
 
+    // --- SWAP LOGIC FIXED ---
     function openSwapModal(idx) {
         activeSwapIndex = idx;
         const select = document.getElementById('swapSelect');
         select.innerHTML = '';
-        currentMatch.forEach((p, i) => { if(i !== idx) select.innerHTML += `<option value="${p}">${p} (Swap Positions)</option>`; });
-        queue.forEach(p => { select.innerHTML += `<option value="${p}">${p} (From Queue)</option>`; });
+        
+        // Option 1: Partners on court
+        currentMatch.forEach((p, i) => { 
+            if(i !== idx) select.innerHTML += `<option value="${p}">${p} (Switch Team/Partner)</option>`; 
+        });
+        
+        // Option 2: Players in queue
+        queue.forEach(p => { 
+            select.innerHTML += `<option value="${p}">${p} (Substitute from Queue)</option>`; 
+        });
+
         document.getElementById('swapTitle').textContent = `Replace ${currentMatch[idx]}`;
         document.getElementById('swapModal').style.display = 'flex';
     }
@@ -183,29 +192,40 @@
     document.getElementById('confirmSwap').onclick = function() {
         const newVal = document.getElementById('swapSelect').value;
         const oldVal = currentMatch[activeSwapIndex];
+
         if (currentMatch.includes(newVal)) {
+            // Case A: Just switching positions on court. NO QUEUE MOVEMENT.
             const targetIdx = currentMatch.indexOf(newVal);
             currentMatch[targetIdx] = oldVal;
             currentMatch[activeSwapIndex] = newVal;
         } else {
+            // Case B: Substituting with someone from the queue.
+            // 1. Remove the new player from the queue so they aren't duplicated
             queue = queue.filter(p => p !== newVal);
+            // 2. Add the old player to the FRONT of the queue
             queue.unshift(oldVal);
+            // 3. Put the new player on court
             currentMatch[activeSwapIndex] = newVal;
         }
+        
         closeSwapModal(); renderAll(); save();
     };
 
     function processResult(s1, s2, matchToProcess) {
-        fullSnapshot = JSON.stringify({ queue, streaks, currentWinners, winCount, lossCount, historyLog, matchCounter, currentMatch, isCourtOccupied });
+        fullSnapshot = JSON.stringify({ queue: [...queue], streaks: {...streaks}, currentWinners: [...currentWinners], winCount: {...winCount}, lossCount: {...lossCount}, historyLog: [...historyLog], matchCounter, currentMatch: [...currentMatch], isCourtOccupied });
         const t1 = [matchToProcess[0], matchToProcess[1]], t2 = [matchToProcess[2], matchToProcess[3]];
         const win = s1 > s2 ? t1 : t2, lose = s1 > s2 ? t2 : t1;
+        
         win.forEach(p => winCount[p] = (winCount[p] || 0) + 1);
         lose.forEach(p => lossCount[p] = (lossCount[p] || 0) + 1);
+        
         matchCounter++;
         historyLog.unshift({ num: matchCounter, s1, s2, t1, t2 });
+        
         lose.forEach(p => queue.push(p));
         currentWinners = win;
         currentWinners.forEach(p => streaks[p] = (streaks[p] || 0) + 1);
+        
         currentMatch = []; showIdle();
     }
 
@@ -218,10 +238,10 @@
         if ((m.s1 > m.s2) === (s1 > s2)) { m.s1 = s1; m.s2 = s2; } 
         else {
             const snap = JSON.parse(fullSnapshot);
-            const originalMatchPlayers = [...m.t1, ...m.t2]; // Get players from the actual match record
+            const originalPlayers = [...m.t1, ...m.t2];
             Object.assign(window, snap);
             historyLog.shift(); matchCounter--;
-            processResult(s1, s2, originalMatchPlayers);
+            processResult(s1, s2, originalPlayers);
         }
         renderAll(); save();
     }
@@ -262,13 +282,14 @@
     }
 
     function removePlayer(name) {
-        players = players.filter(p => p !== name); queue = queue.filter(p => p !== name);
+        players = players.filter(p => p !== name); 
+        queue = queue.filter(p => p !== name);
         if (currentMatch.includes(name)) { currentMatch = []; showIdle(); }
         renderAll(); save();
     }
 
     document.getElementById('startBtn').onclick = function() {
-        isLive = true; historyLog = []; matchCounter = 0;
+        isLive = true; historyLog = []; matchCounter = 0; queue = [...players];
         players.forEach(p => { winCount[p] = 0; lossCount[p] = 0; streaks[p] = 0; });
         showIdle(); renderAll(); save();
     };
@@ -280,7 +301,7 @@
     };
 
     document.getElementById('resumeBtn').onclick = function() { isLive = true; document.getElementById('tallyUI').style.display = 'none'; renderAll(); };
-    document.getElementById('resetBtn').onclick = function() { if(confirm("Reset?")) { localStorage.clear(); location.reload(); } };
+    document.getElementById('resetBtn').onclick = function() { if(confirm("Reset All Data?")) { localStorage.clear(); location.reload(); } };
     
     window.onload = load;
 </script>
