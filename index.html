@@ -7,21 +7,28 @@
     <style>
         :root { --bg: #0f172a; --card: #1e293b; --accent: #38bdf8; --text: #f1f5f9; --win: #22c55e; --lose: #ef4444; --warn: #fbbf24; }
         
-        body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); padding: 10px; margin: 0; display: flex; flex-direction: column; align-items: center; height: 100vh; overflow: hidden; }
+        body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); padding: 10px; margin: 0; display: flex; flex-direction: column; align-items: center; min-height: 100vh; overflow-y: auto; }
         
         .header-area { text-align: center; width: 100%; max-width: 1200px; margin-bottom: 10px; flex-shrink: 0; }
         .header-area h1 { margin: 0; font-size: 1.5rem; color: var(--accent); }
         .rules-list { font-size: 0.85rem; text-align: left; display: inline-block; margin: 10px 0; color: #94a3b8; }
         .rules-list ul { margin: 0; padding-left: 20px; }
 
-        .dashboard { display: grid; grid-template-columns: 1fr; gap: 15px; width: 100%; max-width: 1200px; flex-grow: 1; overflow: hidden; padding-bottom: 10px; }
-        @media (min-width: 1024px) { .dashboard { grid-template-columns: 300px 1fr 320px; height: 100%; } }
+        .dashboard { display: grid; grid-template-columns: 1fr; gap: 15px; width: 100%; max-width: 1200px; padding-bottom: 20px; }
+        
+        /* Desktop specific height locking */
+        @media (min-width: 1024px) { 
+            body { height: 100vh; overflow: hidden; }
+            .dashboard { grid-template-columns: 300px 1fr 320px; height: calc(100vh - 180px); } 
+        }
 
-        .panel { background: var(--card); padding: 15px; border-radius: 12px; border: 1px solid #334155; display: flex; flex-direction: column; overflow: hidden; }
+        .panel { background: var(--card); padding: 15px; border-radius: 12px; border: 1px solid #334155; display: flex; flex-direction: column; min-height: 200px; }
         h2 { color: var(--accent); font-size: 0.8rem; text-transform: uppercase; border-bottom: 1px solid #334155; padding-bottom: 5px; margin-top: 0; flex-shrink: 0; }
         
-        /* Scroll Logic */
+        /* Scroll Logic for Desktop Panels */
         .scroll-content { overflow-y: auto; flex-grow: 1; padding-right: 5px; }
+        @media (max-width: 1023px) { .scroll-content { overflow-y: visible; } }
+        
         .scroll-content::-webkit-scrollbar { width: 6px; }
         .scroll-content::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
 
@@ -31,11 +38,10 @@
         
         .input-group { display: flex; gap: 5px; margin-bottom: 10px; flex-shrink: 0; }
         input { flex: 1; padding: 10px; background: #0f172a; border: 1px solid #334155; color: white; border-radius: 6px; }
-        button { padding: 10px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; background: var(--accent); color: #0f172a; }
+        button { padding: 12px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; background: var(--accent); color: #0f172a; }
         
         .hist-item { background: #111827; padding: 10px; margin-bottom: 8px; border-radius: 8px; font-size: 0.85rem; border-left: 4px solid var(--accent); }
         .q-item { padding: 12px; border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center; background: #1e293b; cursor: grab; }
-        .q-item:active { cursor: grabbing; }
 
         #swapModal, #statsModal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 100; justify-content: center; align-items: center; padding: 20px; }
         .modal-box { background: var(--card); padding: 25px; border-radius: 12px; width: 100%; max-width: 500px; text-align: center; max-height: 90vh; overflow-y: auto; border: 1px solid #475569; }
@@ -45,6 +51,9 @@
         th { color: var(--accent); font-size: 0.75rem; text-transform: uppercase; }
         .win-txt { color: var(--win); font-weight: bold; }
         .lose-txt { color: var(--lose); }
+
+        /* Prevent button cutoff on small mobile */
+        .action-btns { display: flex; flex-direction: column; gap: 10px; margin-top: auto; padding-top: 10px; }
     </style>
 </head>
 <body>
@@ -94,7 +103,7 @@
             <button onclick="addP()">ADD</button>
         </div>
         <div class="scroll-content" id="pList"></div>
-        <div style="display:flex; flex-direction:column; gap:8px; margin-top:10px; flex-shrink:0;">
+        <div class="action-btns">
             <button onclick="startSession()" style="background: var(--win); color:white;">START SESSION</button>
             <button onclick="resetAll()" style="background: #475569; color:white;">RESET LIST</button>
         </div>
@@ -115,8 +124,8 @@
                 <span class="player-slot" id="p3" onclick="openSwap(3)"></span><span id="s3" class="streak-fire"></span>
             </div>
             <div style="display:flex; justify-content:center; gap:15px; margin-bottom:20px;">
-                <input type="number" id="sc1" placeholder="Team 1" style="width:70px; text-align:center; font-size:1.2rem;">
-                <input type="number" id="sc2" placeholder="Team 2" style="width:70px; text-align:center; font-size:1.2rem;">
+                <input type="number" id="sc1" placeholder="T1 Score" style="width:100px; text-align:center; font-size:1.2rem;">
+                <input type="number" id="sc2" placeholder="T2 Score" style="width:100px; text-align:center; font-size:1.2rem;">
             </div>
             <button onclick="submitScore()" style="width:100%; padding:15px; font-size:1rem;">SUBMIT SCORE</button>
         </div>
@@ -124,7 +133,7 @@
             <p style="color:#64748b; margin-bottom:20px;">Court is Empty</p>
             <button onclick="pairNext()" style="width:100%; background: var(--win); color:white; padding:15px; font-size:1rem;">PAIR NEXT MATCH</button>
         </div>
-        <div style="display:flex; flex-direction:column; gap:10px; flex-shrink:0;">
+        <div class="action-btns">
             <button id="undoBtn" onclick="undo()" style="background: var(--warn); display:none; color:black;">UNDO LAST MATCH</button>
             <button onclick="endSession()" style="background: var(--accent); color: #0f172a;">END SESSION & VIEW STATS</button>
         </div>
@@ -132,9 +141,9 @@
 
     <div class="panel">
         <h2>Queue & History</h2>
-        <div class="scroll-content" id="qList" ondragover="allowDrop(event)" style="max-height: 45%;"></div>
+        <div class="scroll-content" id="qList" ondragover="allowDrop(event)"></div>
         <div style="height: 1px; background: #334155; margin: 10px 0; flex-shrink: 0;"></div>
-        <div class="scroll-content" id="hList" style="max-height: 45%;"></div>
+        <div class="scroll-content" id="hList"></div>
     </div>
 </div>
 
@@ -270,13 +279,11 @@
     function endSession() {
         const body = document.getElementById('statsBody');
         body.innerHTML = "";
-        
         let sortedPlayers = [...players].sort((a, b) => {
             let wA = stats[a].w, lA = stats[a].l, pctA = (wA + lA === 0) ? 0 : (wA / (wA + lA));
             let wB = stats[b].w, lB = stats[b].l, pctB = (wB + lB === 0) ? 0 : (wB / (wB + lB));
             return pctB - pctA;
         });
-
         sortedPlayers.forEach(p => {
             const w = stats[p]?.w || 0, l = stats[p]?.l || 0, total = w + l;
             const pct = total === 0 ? 0 : Math.round((w / total) * 100);
@@ -302,4 +309,3 @@
 </script>
 </body>
 </html>
-
