@@ -37,12 +37,28 @@
         #sideNav a:hover, #sideNav a.active { color: var(--accent); background: #1e293b; }
         .closebtn { position: absolute; top: 10px; right: 20px; font-size: 30px; cursor: pointer; color: var(--text); }
         
+        /* OPTION 2: Floating Circle Button */
         #menuBtn { 
-            position: fixed; top: calc(15px + env(safe-area-inset-top)); left: 15px; z-index: 999; 
-            background: var(--accent); color: var(--bg); border: none;
-            padding: 8px 15px; border-radius: 8px; font-weight: bold; cursor: pointer;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            position: fixed; 
+            bottom: 30px; 
+            left: 20px; 
+            z-index: 999; 
+            background: rgba(56, 189, 248, 0.8); /* Semi-transparent accent color */
+            backdrop-filter: blur(8px); /* Frosted glass effect */
+            color: var(--bg); 
+            border: none;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            font-size: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+            transition: opacity 0.3s, transform 0.1s;
         }
+        #menuBtn:active { transform: scale(0.9); }
 
         /* Main Content & Iframe */
         #mainContent { height: 100%; width: 100%; }
@@ -66,7 +82,7 @@
 </head>
 <body>
 
-<button id="menuBtn" onclick="openNav()">☰ MENU</button>
+<button id="menuBtn" onclick="openNav()">☰</button>
 
 <div id="sideNav">
     <span class="closebtn" onclick="closeNav()">&times;</span>
@@ -107,6 +123,7 @@
     function closeNav() { document.getElementById("sideNav").style.width = "0"; }
 
     function loadPage(page) {
+        const menuBtn = document.getElementById('menuBtn');
         document.getElementById('homeScreen').style.display = 'none';
         document.querySelectorAll('iframe').forEach(f => f.classList.remove('active'));
         document.querySelectorAll('#sideNav a').forEach(a => a.classList.remove('active'));
@@ -114,6 +131,7 @@
         if(page === 'home') {
             document.getElementById('homeScreen').style.display = 'flex';
             document.getElementById('link-home').classList.add('active');
+            menuBtn.style.opacity = "1"; // Solid on home screen
         } else {
             let frameId = '';
             if(page.includes('2off')) { frameId = 'frame-2off'; document.getElementById('link-2off').classList.add('active'); }
@@ -122,6 +140,7 @@
             
             const frame = document.getElementById(frameId);
             frame.classList.add('active');
+            menuBtn.style.opacity = "0.5"; // Dimmed on subpages to stay out of the way
         }
         closeNav();
     }
