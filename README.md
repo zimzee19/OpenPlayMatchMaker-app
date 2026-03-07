@@ -14,12 +14,14 @@ Using common open play match making rules:
 
 Functionality:
 
-Ability to add and remove players from the player list and automatically updating the queue.
-Ability to input match result and submit result.  
-"Next In Line" queue list.
-Ability to see match history.
-Ability to see invdividual player's match W-L tally at session end.
-Ability to update players in match
-Ability to rearrange queue
-Ability to edit erroneous match result and re-pair accordingly
+Ability to add and remove players from the player list and automatically updating the queue.  
+Ability to input match result and submit result.    
+"Next In Line" queue list.  
+Ability to see match history.  
+Ability to see invdividual player's match W-L tally at session end.  
+Ability to update players in match    
+Ability to rearrange queue  
+Ability to edit erroneous match result and re-pair accordingly    
+
+  3 Modes available
 # ==========================================
