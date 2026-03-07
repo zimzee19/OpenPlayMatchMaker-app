@@ -20,13 +20,45 @@
         :root {
             --bg: #0f172a; --card: #1e293b; --accent: #38bdf8; --text: #f1f5f9;
             --nav-width: 260px;
+            --header-height: 60px;
         }
 
         body, html { margin: 0; padding: 0; height: 100%; background: var(--bg); font-family: system-ui, sans-serif; overflow: hidden; }
 
+        /* Top Navigation Bar */
+        #topBar {
+            height: var(--header-height);
+            background: var(--card);
+            display: flex;
+            align-items: center;
+            padding: 0 15px;
+            padding-top: env(safe-area-inset-top); /* Supports notched phones */
+            border-bottom: 1px solid #334155;
+            box-sizing: border-box;
+            position: relative;
+            z-index: 1001;
+        }
+
+        #menuBtn { 
+            background: var(--accent);
+            color: var(--bg);
+            border: none;
+            padding: 8px 15px;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        #pageTitle {
+            margin-left: 15px;
+            color: var(--text);
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+
         /* Sidebar Navigation */
         #sideNav {
-            height: 100%; width: 0; position: fixed; z-index: 1000; top: 0; left: 0;
+            height: 100%; width: 0; position: fixed; z-index: 2000; top: 0; left: 0;
             background-color: var(--card); overflow-x: hidden; transition: 0.3s;
             padding-top: 60px; border-right: 1px solid #334155;
         }
@@ -36,32 +68,13 @@
         }
         #sideNav a:hover, #sideNav a.active { color: var(--accent); background: #1e293b; }
         .closebtn { position: absolute; top: 10px; right: 20px; font-size: 30px; cursor: pointer; color: var(--text); }
-        
-        /* OPTION 2: Floating Circle Button */
-        #menuBtn { 
-            position: fixed; 
-            bottom: 30px; 
-            left: 20px; 
-            z-index: 999; 
-            background: rgba(56, 189, 248, 0.8); /* Semi-transparent accent color */
-            backdrop-filter: blur(8px); /* Frosted glass effect */
-            color: var(--bg); 
-            border: none;
-            width: 56px;
-            height: 56px;
-            border-radius: 50%;
-            font-size: 24px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
-            transition: opacity 0.3s, transform 0.1s;
-        }
-        #menuBtn:active { transform: scale(0.9); }
 
-        /* Main Content & Iframe */
-        #mainContent { height: 100%; width: 100%; }
+        /* Main Content Container */
+        #mainContent { 
+            height: calc(100% - var(--header-height)); 
+            width: 100%; 
+        }
+
         iframe { border: none; width: 100%; height: 100%; display: none; }
         iframe.active { display: block; }
 
@@ -82,14 +95,17 @@
 </head>
 <body>
 
-<button id="menuBtn" onclick="openNav()">☰</button>
+<div id="topBar">
+    <button id="menuBtn" onclick="openNav()">☰ MENU</button>
+    <div id="pageTitle">Pickleball Play!</div>
+</div>
 
 <div id="sideNav">
     <span class="closebtn" onclick="closeNav()">&times;</span>
     <a href="#" onclick="loadPage('home')" id="link-home">🏠 Home</a>
-    <a href="#" onclick="loadPage('2off2on.html')" id="link-2off">🥈 Open Play - 2OFF/2ON</a>
-    <a href="#" onclick="loadPage('4off4on.html')" id="link-4off">♻️ Open Play - 4OFF/4ON</a>
-    <a href="#" onclick="loadPage('Tournament.html')" id="link-tourney">🏆 Tournament</a>
+    <a href="#" onclick="loadPage('2off2on.html', '2OFF/2ON')" id="link-2off">🥈 Open Play - 2OFF/2ON</a>
+    <a href="#" onclick="loadPage('4off4on.html', '4OFF/4ON')" id="link-4off">♻️ Open Play - 4OFF/4ON</a>
+    <a href="#" onclick="loadPage('Tournament.html', 'Tournament')" id="link-tourney">🏆 Tournament</a>
 </div>
 
 <div id="mainContent">
@@ -98,15 +114,15 @@
         <p style="color: #94a3b8;">Open Play and Tournament Match Tool</p>
         
         <div class="grid">
-            <a href="#" class="btn-card" onclick="loadPage('2off2on.html')">
+            <a href="#" class="btn-card" onclick="loadPage('2off2on.html', '2OFF/2ON')">
                 🥈 Open Play - 2OFF/2ON
                 <span>Winners stay, losers rotate out</span>
             </a>
-            <a href="#" class="btn-card" onclick="loadPage('4off4on.html')">
+            <a href="#" class="btn-card" onclick="loadPage('4off4on.html', '4OFF/4ON')">
                 ♻️ Open Play - 4OFF/4ON
                 <span>Full court rotation every game</span>
             </a>
-            <a href="#" class="btn-card" onclick="loadPage('Tournament.html')">
+            <a href="#" class="btn-card" onclick="loadPage('Tournament.html', 'Tournament')">
                 🏆 Tournament
                 <span>Swiss Tournament -> Top Cut Single Elimination</span>
             </a>
@@ -122,16 +138,17 @@
     function openNav() { document.getElementById("sideNav").style.width = "260px"; }
     function closeNav() { document.getElementById("sideNav").style.width = "0"; }
 
-    function loadPage(page) {
-        const menuBtn = document.getElementById('menuBtn');
+    function loadPage(page, title) {
         document.getElementById('homeScreen').style.display = 'none';
         document.querySelectorAll('iframe').forEach(f => f.classList.remove('active'));
         document.querySelectorAll('#sideNav a').forEach(a => a.classList.remove('active'));
 
+        const titleDisplay = document.getElementById('pageTitle');
+
         if(page === 'home') {
             document.getElementById('homeScreen').style.display = 'flex';
             document.getElementById('link-home').classList.add('active');
-            menuBtn.style.opacity = "1"; // Solid on home screen
+            titleDisplay.innerText = "Pickleball Play!";
         } else {
             let frameId = '';
             if(page.includes('2off')) { frameId = 'frame-2off'; document.getElementById('link-2off').classList.add('active'); }
@@ -140,12 +157,11 @@
             
             const frame = document.getElementById(frameId);
             frame.classList.add('active');
-            menuBtn.style.opacity = "0.5"; // Dimmed on subpages to stay out of the way
+            titleDisplay.innerText = title;
         }
         closeNav();
     }
 
-    // Register Service Worker for PWA
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
             navigator.serviceWorker.register('sw.js').then(reg => {
