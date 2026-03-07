@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -11,298 +11,132 @@
     
     <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/128/16117/16117721.png">
     <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/128/16117/16117721.png">
-
+    
     <link rel="manifest" href="manifest.json">
 
-    <title>2v2 Pickleball Match Maker</title>
-    <style>
-        :root { --bg: #0f172a; --card: #1e293b; --accent: #38bdf8; --text: #f1f5f9; --win: #22c55e; --lose: #ef4444; --warn: #fbbf24; }
-        
-        body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); padding: 10px; margin: 0; display: flex; flex-direction: column; align-items: center; min-height: 100vh; overflow-y: auto; }
-        
-        .header-area { text-align: center; width: 100%; max-width: 1200px; margin-bottom: 10px; flex-shrink: 0; }
-        .header-area h1 { margin: 0; font-size: 1.5rem; color: var(--accent); }
-        .rules-list { font-size: 0.85rem; text-align: left; display: inline-block; margin: 10px 0; color: #94a3b8; }
-        .rules-list ul { margin: 0; padding-left: 20px; }
+    <title>Pickleball Play!</title>
 
-        .dashboard { display: grid; grid-template-columns: 1fr; gap: 15px; width: 100%; max-width: 1200px; padding-bottom: 20px; }
-        
-        @media (min-width: 1024px) { 
-            body { height: 100vh; overflow: hidden; }
-            .dashboard { grid-template-columns: 300px 1fr 320px; height: calc(100vh - 180px); } 
+    <style>
+        :root {
+            --bg: #0f172a; --card: #1e293b; --accent: #38bdf8; --text: #f1f5f9;
+            --nav-width: 260px;
         }
 
-        .panel { background: var(--card); padding: 15px; border-radius: 12px; border: 1px solid #334155; display: flex; flex-direction: column; min-height: 200px; }
-        h2 { color: var(--accent); font-size: 0.8rem; text-transform: uppercase; border-bottom: 1px solid #334155; padding-bottom: 5px; margin-top: 0; flex-shrink: 0; }
-        
-        .scroll-content { overflow-y: auto; flex-grow: 1; padding-right: 5px; }
-        @media (max-width: 1023px) { .scroll-content { overflow-y: visible; } }
-        
-        .scroll-content::-webkit-scrollbar { width: 6px; }
-        .scroll-content::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+        body, html { margin: 0; padding: 0; height: 100%; background: var(--bg); font-family: system-ui, sans-serif; overflow: hidden; }
 
-        .court-area { text-align: center; border: 2px solid var(--accent); padding: 20px; border-radius: 15px; background: #1a2233; margin-bottom: 15px; flex-shrink: 0; }
-        .player-slot { color: var(--accent); font-weight: bold; text-decoration: underline; cursor: pointer; font-size: 1.2rem; }
-        .streak-fire { color: var(--warn); font-size: 0.85rem; margin-left: 4px; font-weight: bold; }
+        /* Sidebar Navigation */
+        #sideNav {
+            height: 100%; width: 0; position: fixed; z-index: 1000; top: 0; left: 0;
+            background-color: var(--card); overflow-x: hidden; transition: 0.3s;
+            padding-top: 60px; border-right: 1px solid #334155;
+        }
+        #sideNav a {
+            padding: 15px 25px; text-decoration: none; font-size: 1.1rem; color: #94a3b8;
+            display: block; transition: 0.2s; white-space: nowrap;
+        }
+        #sideNav a:hover, #sideNav a.active { color: var(--accent); background: #1e293b; }
+        .closebtn { position: absolute; top: 10px; right: 20px; font-size: 30px; cursor: pointer; color: var(--text); }
         
-        .input-group { display: flex; gap: 5px; margin-bottom: 10px; flex-shrink: 0; }
-        input { flex: 1; padding: 10px; background: #0f172a; border: 1px solid #334155; color: white; border-radius: 6px; }
-        button { padding: 12px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; background: var(--accent); color: #0f172a; }
-        
-        .hist-item { background: #111827; padding: 10px; margin-bottom: 8px; border-radius: 8px; font-size: 0.85rem; border-left: 4px solid var(--accent); }
-        .q-item { padding: 12px; border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center; background: #1e293b; cursor: grab; }
+        #menuBtn { 
+            position: fixed; top: calc(15px + env(safe-area-inset-top)); left: 15px; z-index: 999; 
+            background: var(--accent); color: var(--bg); border: none;
+            padding: 8px 15px; border-radius: 8px; font-weight: bold; cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
 
-        #swapModal, #statsModal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 100; justify-content: center; align-items: center; padding: 20px; }
-        .modal-box { background: var(--card); padding: 25px; border-radius: 12px; width: 100%; max-width: 500px; text-align: center; max-height: 90vh; overflow-y: auto; border: 1px solid #475569; }
-        
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-        th, td { padding: 12px 8px; border-bottom: 1px solid #334155; text-align: left; }
-        th { color: var(--accent); font-size: 0.75rem; text-transform: uppercase; }
-        .win-txt { color: var(--win); font-weight: bold; }
-        .lose-txt { color: var(--lose); }
+        /* Main Content & Iframe */
+        #mainContent { height: 100%; width: 100%; }
+        iframe { border: none; width: 100%; height: 100%; display: none; }
+        iframe.active { display: block; }
 
-        .action-btns { display: flex; flex-direction: column; gap: 10px; margin-top: auto; padding-top: 10px; }
+        /* Home Dashboard */
+        #homeScreen { 
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            height: 100%; padding: 20px; text-align: center; box-sizing: border-box;
+        }
+        .grid { display: grid; grid-template-columns: 1fr; gap: 15px; width: 100%; max-width: 400px; margin-top: 30px; }
+        .btn-card { 
+            background: var(--card); color: var(--text); padding: 25px; border-radius: 12px;
+            text-decoration: none; border: 1px solid #334155; font-weight: bold; font-size: 1.1rem;
+            transition: transform 0.1s;
+        }
+        .btn-card:active { transform: scale(0.96); background: #334155; }
+        .btn-card span { display: block; font-size: 0.8rem; font-weight: normal; color: #94a3b8; margin-top: 5px; }
     </style>
 </head>
 <body>
 
-<div class="header-area">
-    <h1>2v2 Pickleball Open Play Match Maker</h1>
-    <div class="rules-list">
-        <ul>
-            <li>Queue follows order names are added.</li>
-            <li>Winners stay but split (play against each other), next 2 in queue join.</li>
-            <li>Maximum of two (2) consecutive games (regardless of result).</li>
-        </ul>
-    </div>
+<button id="menuBtn" onclick="openNav()">☰ MENU</button>
+
+<div id="sideNav">
+    <span class="closebtn" onclick="closeNav()">&times;</span>
+    <a href="#" onclick="loadPage('home')" id="link-home">🏠 Home</a>
+    <a href="#" onclick="loadPage('2off2on.html')" id="link-2off">🥈 Open Play - 2OFF/2ON</a>
+    <a href="#" onclick="loadPage('4off4on.html')" id="link-4off">♻️ Open Play - 4OFF/4ON</a>
+    <a href="#" onclick="loadPage('Tournament.html')" id="link-tourney">🏆 Tournament</a>
 </div>
 
-<div id="swapModal">
-    <div class="modal-box">
-        <h3>Swap Player</h3>
-        <p style="font-size: 0.8rem; color: var(--warn); margin-bottom: 15px;">Swapping resets the consecutive win streak.</p>
-        <select id="swapSelect" style="width:100%; padding:12px; margin-bottom:20px; background:#0f172a; color:white; border:1px solid #334155; border-radius:6px;"></select>
-        <div style="display:flex; gap:10px;">
-            <button id="confirmSwap" style="flex:1; background: var(--win); color:white;">CONFIRM</button>
-            <button onclick="document.getElementById('swapModal').style.display='none'" style="flex:1; background: #475569; color:white;">CANCEL</button>
-        </div>
-    </div>
-</div>
-
-<div id="statsModal">
-    <div class="modal-box">
-        <h2>Session Results</h2>
-        <table id="statsTable">
-            <thead><tr><th>Player</th><th>W</th><th>L</th><th>Win %</th></tr></thead>
-            <tbody id="statsBody"></tbody>
-        </table>
-        <div style="display:flex; gap:10px; margin-top:25px;">
-            <button onclick="document.getElementById('statsModal').style.display='none'" style="flex:1; background: #475569; color:white;">BACK</button>
-            <button onclick="resetAll()" style="flex:1; background: var(--lose); color:white;">RESET ALL</button>
-        </div>
-    </div>
-</div>
-
-<div class="dashboard">
-    <div class="panel">
-        <h2>1. Players</h2>
-        <div class="input-group">
-            <input type="text" id="nameIn" placeholder="Enter Name..." onkeypress="if(event.key==='Enter') addP()">
-            <button onclick="addP()">ADD</button>
-        </div>
-        <div class="scroll-content" id="pList"></div>
-        <div class="action-btns">
-            <button onclick="startSession()" style="background: var(--win); color:white;">START SESSION</button>
-            <button onclick="resetAll()" style="background: #475569; color:white;">RESET LIST</button>
+<div id="mainContent">
+    <div id="homeScreen">
+        <h1 style="color: var(--accent); margin: 0;">Pickleball Play!</h1>
+        <p style="color: #94a3b8;">Open Play and Tournament Match Tool</p>
+        
+        <div class="grid">
+            <a href="#" class="btn-card" onclick="loadPage('2off2on.html')">
+                🥈 Open Play - 2OFF/2ON
+                <span>Winners stay, losers rotate out</span>
+            </a>
+            <a href="#" class="btn-card" onclick="loadPage('4off4on.html')">
+                ♻️ Open Play - 4OFF/4ON
+                <span>Full court rotation every game</span>
+            </a>
+            <a href="#" class="btn-card" onclick="loadPage('Tournament.html')">
+                🏆 Tournament
+                <span>Swiss Tournament -> Top Cut Single Elimination</span>
+            </a>
         </div>
     </div>
 
-    <div class="panel" id="mainDisplay" style="display:none;">
-        <h2>2. Court</h2>
-        <div class="court-area" id="courtUI" style="display:none;">
-            <div>
-                <b>Team 1</b><br>
-                <span class="player-slot" id="p0" onclick="openSwap(0)"></span><span id="s0" class="streak-fire"></span> & 
-                <span class="player-slot" id="p1" onclick="openSwap(1)"></span><span id="s1" class="streak-fire"></span>
-            </div>
-            <div style="margin:15px 0; color:#64748b; font-weight:bold;">VS</div>
-            <div style="margin-bottom:20px;">
-                <b>Team 2</b><br>
-                <span class="player-slot" id="p2" onclick="openSwap(2)"></span><span id="s2" class="streak-fire"></span> & 
-                <span class="player-slot" id="p3" onclick="openSwap(3)"></span><span id="s3" class="streak-fire"></span>
-            </div>
-            <div style="display:flex; justify-content:center; gap:15px; margin-bottom:20px;">
-                <input type="number" id="sc1" placeholder="T1 Score" style="width:100px; text-align:center; font-size:1.2rem;">
-                <input type="number" id="sc2" placeholder="T2 Score" style="width:100px; text-align:center; font-size:1.2rem;">
-            </div>
-            <button onclick="submitScore()" style="width:100%; padding:15px; font-size:1rem;">SUBMIT SCORE</button>
-        </div>
-        <div id="idleUI" style="text-align:center; padding:30px; background:#1a2233; border-radius:15px; border:2px dashed #334155; margin-bottom:15px;">
-            <p style="color:#64748b; margin-bottom:20px;">Court is Empty</p>
-            <button onclick="pairNext()" style="width:100%; background: var(--win); color:white; padding:15px; font-size:1rem;">PAIR NEXT MATCH</button>
-        </div>
-        <div class="action-btns">
-            <button id="undoBtn" onclick="undo()" style="background: var(--warn); display:none; color:black;">UNDO LAST MATCH</button>
-            <button onclick="endSession()" style="background: var(--accent); color: #0f172a;">END SESSION & VIEW STATS</button>
-        </div>
-    </div>
-
-    <div class="panel">
-        <h2>Queue & History</h2>
-        <div class="scroll-content" id="qList" ondragover="allowDrop(event)"></div>
-        <div style="height: 1px; background: #334155; margin: 10px 0; flex-shrink: 0;"></div>
-        <div class="scroll-content" id="hList"></div>
-    </div>
+    <iframe id="frame-2off" src="2off2on.html"></iframe>
+    <iframe id="frame-4off" src="4off4on.html"></iframe>
+    <iframe id="frame-tourney" src="Tournament.html"></iframe>
 </div>
 
 <script>
-    // [SCRIPT REMAINS EXACTLY THE SAME AS YOUR LOGIC]
-    let players = [], queue = [], currentMatch = [], streaks = {}, winnersStaying = [], history = [], snapshots = [], stats = {};
-    let draggedIdx = null;
+    function openNav() { document.getElementById("sideNav").style.width = "260px"; }
+    function closeNav() { document.getElementById("sideNav").style.width = "0"; }
 
-    function save() { localStorage.setItem('pb_final_v13', JSON.stringify({players, queue, currentMatch, streaks, winnersStaying, history, snapshots, stats})); }
-    function addP() {
-        let name = document.getElementById('nameIn').value.trim();
-        if (name && !players.includes(name)) { 
-            players.push(name); queue.push(name); stats[name] = {w: 0, l: 0}; render(); 
-        }
-        document.getElementById('nameIn').value = "";
-    }
-    function removePlayer(name) {
-        players = players.filter(p => p !== name); queue = queue.filter(p => p !== name); delete stats[name]; render();
-    }
-    function startSession() {
-        if (players.length < 4) return alert("Need at least 4 players.");
-        queue = [...players]; history = []; streaks = {}; winnersStaying = []; currentMatch = []; snapshots = [];
-        players.forEach(p => stats[p] = {w: 0, l: 0});
-        document.getElementById('mainDisplay').style.display = 'block';
-        render();
-    }
-    function handleDragStart(e, index) { draggedIdx = index; e.target.classList.add('dragging'); }
-    function handleDragEnd(e) { e.target.classList.remove('dragging'); }
-    function allowDrop(e) { e.preventDefault(); }
-    function handleDrop(e, targetIdx) {
-        e.preventDefault();
-        const item = queue.splice(draggedIdx, 1)[0];
-        queue.splice(targetIdx, 0, item);
-        render();
-    }
-    function render() {
-        document.getElementById('pList').innerHTML = players.map(p => `<div class="q-item" style="cursor:default;">${p} <button onclick="removePlayer('${p}')" style="background:var(--lose); color:white; border:none; padding:4px 10px; border-radius:4px;">X</button></div>`).join('');
-        document.getElementById('qList').innerHTML = "<b>Queue (Drag to Reorder):</b><br>" + queue.map((p, i) => `
-            <div class="q-item" draggable="true" ondragstart="handleDragStart(event, ${i})" ondragend="handleDragEnd(event)" ondragover="allowDrop(event)" ondrop="handleDrop(event, ${i})">
-                <span>${i+1}. ${p}</span>
-            </div>`).join('');
-        document.getElementById('hList').innerHTML = "<b>History:</b><br>" + history.map((m, i) => `
-            <div class="hist-item">
-                <div style="display:flex; justify-content:space-between;"><b>Match #${m.id}</b> <span>${m.s1}-${m.s2}</span></div>
-                <div style="font-size:0.8rem; margin-top:4px;">
-                    <span class="${m.s1>m.s2?'win-txt':'lose-txt'}">${m.t1.join('/')}</span> vs <span class="${m.s2>m.s1?'win-txt':'lose-txt'}">${m.t2.join('/')}</span>
-                    ${i===0 ? `<button onclick="fixScore()" style="float:right; background:var(--warn); border:none; border-radius:3px; padding:2px 6px; font-size:0.7rem;">FIX</button>` : ''}
-                </div>
-            </div>`).join('');
-        if (currentMatch.length === 4) {
-            document.getElementById('courtUI').style.display = 'block';
-            document.getElementById('idleUI').style.display = 'none';
-            currentMatch.forEach((p, i) => {
-                document.getElementById('p'+i).textContent = p;
-                document.getElementById('s'+i).textContent = streaks[p] ? ` 🔥 ${streaks[p]}` : "";
-            });
+    function loadPage(page) {
+        document.getElementById('homeScreen').style.display = 'none';
+        document.querySelectorAll('iframe').forEach(f => f.classList.remove('active'));
+        document.querySelectorAll('#sideNav a').forEach(a => a.classList.remove('active'));
+
+        if(page === 'home') {
+            document.getElementById('homeScreen').style.display = 'flex';
+            document.getElementById('link-home').classList.add('active');
         } else {
-            document.getElementById('courtUI').style.display = 'none';
-            document.getElementById('idleUI').style.display = 'block';
+            let frameId = '';
+            if(page.includes('2off')) { frameId = 'frame-2off'; document.getElementById('link-2off').classList.add('active'); }
+            else if(page.includes('4off')) { frameId = 'frame-4off'; document.getElementById('link-4off').classList.add('active'); }
+            else if(page.includes('Tournament')) { frameId = 'frame-tourney'; document.getElementById('link-tourney').classList.add('active'); }
+            
+            const frame = document.getElementById(frameId);
+            frame.classList.add('active');
         }
-        document.getElementById('undoBtn').style.display = snapshots.length > 0 ? 'block' : 'none';
-        save();
+        closeNav();
     }
-    function pairNext() {
-        let next = [...winnersStaying];
-        if (next.length === 2) { let p1 = next[0], p2 = next[1]; next = [p1, null, p2, null]; }
-        while ((next.includes(null) || next.length < 4) && queue.length > 0) {
-            let p = queue.shift();
-            if (next.includes(null)) next[next.indexOf(null)] = p; else next.push(p);
-        }
-        if (next.length < 4) {
-            next.filter(p => p !== null).forEach(p => { if(!winnersStaying.includes(p)) queue.unshift(p) });
-            return alert("Not enough players in queue!");
-        }
-        currentMatch = next; render();
-    }
-    function submitScore() {
-        let s1 = parseInt(document.getElementById('sc1').value), s2 = parseInt(document.getElementById('sc2').value);
-        if (isNaN(s1) || isNaN(s2)) return alert("Enter scores.");
-        snapshots.push(JSON.stringify({queue: [...queue], streaks: {...streaks}, winnersStaying: [...winnersStaying], currentMatch: [...currentMatch], stats: JSON.parse(JSON.stringify(stats))}));
-        let t1 = [currentMatch[0], currentMatch[1]], t2 = [currentMatch[2], currentMatch[3]];
-        let winners = s1 > s2 ? t1 : t2, losers = s1 > s2 ? t2 : t1;
-        losers.forEach(p => { queue.push(p); delete streaks[p]; if(stats[p]) stats[p].l++; });
-        winnersStaying = [];
-        winners.forEach(p => {
-            if(stats[p]) stats[p].w++;
-            streaks[p] = (streaks[p] || 0) + 1;
-            if (streaks[p] >= 2) { queue.push(p); delete streaks[p]; } else winnersStaying.push(p);
+
+    // Register Service Worker for PWA
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('sw.js').then(reg => {
+                console.log('Service Worker registered');
+            }).catch(err => {
+                console.log('Registration failed:', err);
+            });
         });
-        history.unshift({id: history.length + 1, s1, s2, t1, t2});
-        currentMatch = []; document.getElementById('sc1').value = ""; document.getElementById('sc2').value = "";
-        render();
     }
-    function undo() {
-        if (snapshots.length === 0) return;
-        let snap = JSON.parse(snapshots.pop());
-        queue = snap.queue; streaks = snap.streaks; winnersStaying = snap.winnersStaying; currentMatch = snap.currentMatch; stats = snap.stats;
-        history.shift(); render();
-    }
-    function fixScore() {
-        let m = history[0];
-        let n1 = prompt("Correct Team 1 Score:", m.s1), n2 = prompt("Correct Team 2 Score:", m.s2);
-        if (n1 === null || n2 === null) return;
-        undo(); document.getElementById('sc1').value = n1; document.getElementById('sc2').value = n2; submitScore();
-    }
-    function openSwap(idx) {
-        let sel = document.getElementById('swapSelect');
-        sel.innerHTML = queue.map(p => `<option value="${p}">${p}</option>`).join('');
-        currentMatch.forEach((p, i) => { if(i!==idx) sel.innerHTML += `<option value="${p}">${p} (Switch)</option>` });
-        document.getElementById('swapModal').style.display = 'flex';
-        document.getElementById('confirmSwap').onclick = () => {
-            let newP = sel.value, oldP = currentMatch[idx];
-            if (queue.includes(newP)) {
-                queue = queue.filter(p => p !== newP); queue.unshift(oldP); currentMatch[idx] = newP;
-                delete streaks[oldP]; winnersStaying = winnersStaying.filter(p => p !== oldP);
-            } else {
-                let oIdx = currentMatch.indexOf(newP); currentMatch[idx] = newP; currentMatch[oIdx] = oldP;
-            }
-            document.getElementById('swapModal').style.display = 'none'; render();
-        };
-    }
-    function endSession() {
-        const body = document.getElementById('statsBody');
-        body.innerHTML = "";
-        let sortedPlayers = [...players].sort((a, b) => {
-            let wA = stats[a].w, lA = stats[a].l, pctA = (wA + lA === 0) ? 0 : (wA / (wA + lA));
-            let wB = stats[b].w, lB = stats[b].l, pctB = (wB + lB === 0) ? 0 : (wB / (wB + lB));
-            return pctB - pctA;
-        });
-        sortedPlayers.forEach(p => {
-            const w = stats[p]?.w || 0, l = stats[p]?.l || 0, total = w + l;
-            const pct = total === 0 ? 0 : Math.round((w / total) * 100);
-            body.innerHTML += `<tr><td>${p}</td><td>${w}</td><td>${l}</td><td>${pct}%</td></tr>`;
-        });
-        document.getElementById('statsModal').style.display = 'flex';
-    }
-    function resetAll() {
-        if(confirm("Are you sure? This will delete everything.")) { localStorage.removeItem('pb_final_v13'); location.reload(); }
-    }
-    window.onload = () => {
-        let saved = localStorage.getItem('pb_final_v13');
-        if (saved) {
-            let d = JSON.parse(saved);
-            players = d.players; queue = d.queue; currentMatch = d.currentMatch; streaks = d.streaks;
-            winnersStaying = d.winnersStaying; history = d.history; snapshots = d.snapshots; stats = d.stats;
-            if (players.length > 0) document.getElementById('mainDisplay').style.display = 'block';
-            render();
-        }
-    };
 </script>
+
 </body>
 </html>
-
-
