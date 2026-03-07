@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Pickleball Open Play & Tournament</title>
+    <style>
+        :root { 
+            --bg: #0f172a; --card: #1e293b; --accent: #38bdf8; --text: #f1f5f9; 
+            --win: #22c55e; --lose: #ef4444; --warn: #fbbf24; --nav: #1e293b;
+        }
+        
+        body { 
+            font-family: system-ui, -apple-system, sans-serif; 
+            background: var(--bg); 
+            color: var(--text); 
+            margin: 0; 
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+
+        #tournament { max-width: 900px; width: 100%; }
+
+        h1, h3 { color: var(--accent); }
+
+        .card { 
+            background: var(--card); 
+            padding: 20px; 
+            border-radius: 12px; 
+            border: 1px solid #334155; 
+            margin-bottom: 20px; 
+        }
+
+        .btn { 
+            padding: 10px 15px; 
+            border: none; 
+            border-radius: 6px; 
+            font-weight: bold; 
+            cursor: pointer; 
+            background: var(--accent); 
+            color: #0f172a; 
+            transition: 0.2s;
+        }
+
+        .btn:disabled { 
+            opacity: 0.3; 
+            cursor: not-allowed; 
+            background: #475569; 
+            color: #94a3b8; 
+        }
+
+        .btn-win { background: var(--win); color: white; }
+        .btn-lose { background: var(--lose); color: white; }
+        .btn-edit { background: var(--warn); color: #0f172a; }
+
+        .input-group { display: flex; gap: 8px; margin-bottom: 12px; }
+        
+        input, select { 
+            padding: 10px; 
+            background: #0f172a; 
+            border: 1px solid #334155; 
+            color: white; 
+            border-radius: 6px; 
+        }
+
+        /* Remove Number Input Arrows */
+        input::-webkit-outer-spin-button, 
+        input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        input[type=number] { -moz-appearance: textfield; }
+
+        /* Tournament Layout */
+        .dashboard { 
+            display: grid; 
+            grid-template-columns: 1fr; 
+            gap: 20px; 
+        }
+        @media (min-width: 768px) { .dashboard { grid-template-columns: 1fr 300px; } }
+
+        /* Match Cards */
+        .match-card { 
+            background: #111827; 
+            padding: 15px; 
+            border-radius: 8px; 
+            margin-bottom: 15px; 
+            border-left: 4px solid var(--accent); 
+        }
+
+        .score-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
+        .score-table th { font-size: 0.8rem; text-align: center; color: var(--accent); padding: 5px; width: 33%; }
+        .score-table td { text-align: center; padding: 8px 4px; }
+        
+        .score-box { width: 60px !important; text-align: center; font-weight: bold; font-size: 1.1rem; }
+        .set-label { font-size: 0.75rem; color: #94a3b8; width: 60px; font-weight: bold; }
+
+        /* Standings */
+        .standing-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+        .standing-table th { text-align: left; color: var(--accent); padding: 8px; border-bottom: 1px solid #334155; }
+        .standing-table td { padding: 8px; border-bottom: 1px solid #334155; }
+
+        .winner-banner { 
+            background: var(--win); 
+            color: white; 
+            padding: 25px; 
+            border-radius: 12px; 
+            text-align: center; 
+            margin-bottom: 20px; 
+            border: 3px solid #fff; 
+            font-size: 1.5rem; 
+            font-weight: bold; 
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+            100% { transform: scale(1); }
+        }
+    </style>
+</head>
+<body>
+
+<div id="tournament">
+    <div id="tourneySetup">
+        <h1>Tournament Setup</h1>
+        <div class="card">
+            <label style="display:block; margin-bottom:10px; font-weight:bold; color:var(--accent);">Select Format:</label>
+            <div class="input-group">
+                <select id="tourneyType" onchange="toggleTourneyInputs()">
+                    <option value="" selected disabled>-- Choose Format --</option>
+                    <option value="singles">Singles (1v1)</option>
+                    <option value="doubles">Doubles (2v2)</option>
+                </select>
+            </div>
+            
+            <div id="entryFields" style="display:none; border-top: 1px solid #334155; padding-top:15px; margin-top:10px;">
+                <div class="input-group" id="doublesInputs" style="display:none;">
+                    <input type="text" id="tPlayer1" placeholder="Player 1" onkeypress="if(event.key==='Enter') addTeam()">
+                    <input type="text" id="tPlayer2" placeholder="Player 2" onkeypress="if(event.key==='Enter') addTeam()">
+                    <button class="btn" onclick="addTeam()">ADD TEAM</button>
+                </div>
+                <div class="input-group" id="singlesInputs" style="display:none;">
+                    <input type="text" id="tPlayerS" placeholder="Player Name" onkeypress="if(event.key==='Enter') addTeam()">
+                    <button class="btn" onclick="addTeam()">ADD TEAM</button>
+                </div>
+                <div id="teamList" style="margin: 15px 0; max-height: 200px; overflow-y: auto; color:var(--accent); font-weight: 500;"></div>
+                <button class="btn btn-win" style="width:100%;" onclick="startTournament()">START SWISS TOURNAMENT</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="tourneyActive" style="display:none;">
+        <div id="finalWinnerArea"></div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+            <h3 id="roundTitle" style="margin:0;">Round 1</h3>
+            <div id="finalsConfig" style="display:none;">
+                Series: <select id="finalsMode" onchange="renderTourney()"><option value="3">Best of 3</option><option value="5">Best of 5</option></select>
+            </div>
+        </div>
+        
+        <div class="dashboard">
+            <div>
+                <div id="activeMatches"></div>
+                <div id="navContainer" style="margin-top:20px; text-align:center;">
+                    <button class="btn btn-win" style="padding: 12px 30px; width: 100%;" onclick="progressionStep()" id="nextRoundBtn" disabled>Next Round Pairing</button>
+                </div>
+            </div>
+            <div>
+                <h4>Standings</h4>
+                <div class="card" style="padding:10px;">
+                    <table class="standing-table">
+                        <thead><tr><th>Team</th><th>W-L</th><th>Set %</th><th>OMW</th></tr></thead>
+                        <tbody id="standingBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let teams = [], tourneyMatches = [], currentRound = 0, maxSwiss = 0, tourneyPhase = 'swiss';
+
+    function toggleTourneyInputs() {
+        const type = document.getElementById('tourneyType').value;
+        document.getElementById('entryFields').style.display = 'block';
+        document.getElementById('doublesInputs').style.display = type === 'doubles' ? 'flex' : 'none';
+        document.getElementById('singlesInputs').style.display = type === 'singles' ? 'flex' : 'none';
+    }
+
+    function addTeam() {
+        const type = document.getElementById('tourneyType').value;
+        let name = type === 'singles' ? document.getElementById('tPlayerS').value.trim() : 
+                   (document.getElementById('tPlayer1').value.trim() + " / " + document.getElementById('tPlayer2').value.trim());
+        
+        if(name && name !== " / ") {
+            teams.push({ name, w:0, l:0, sw:0, sl:0, opponents: [], hasBye: false });
+            document.getElementById('teamList').innerHTML = teams.map(t => `<div>• ${t.name}</div>`).join('');
+            document.querySelectorAll('#tourneySetup input').forEach(i => i.value = "");
+        }
+    }
+
+    function getSetPct(t) { 
+        let tot = t.sw + t.sl; 
+        return tot === 0 ? 0 : (t.sw / tot).toFixed(3); 
+    }
+
+    function getOMW(t) {
+        if (!t.opponents.length) return 0;
+        let sum = t.opponents.reduce((acc, opp) => acc + (opp.w / (opp.w + opp.l || 1)), 0);
+        return (sum / t.opponents.length).toFixed(3);
+    }
+
+    function startTournament() {
+        if(teams.length < 4) return alert("Min 4 teams needed.");
+        teams.sort(() => Math.random() - 0.5);
+        maxSwiss = Math.ceil(Math.log2(teams.length));
+        document.getElementById('tourneySetup').style.display = 'none';
+        document.getElementById('tourneyActive').style.display = 'block';
+        progressionStep();
+    }
+
+    function progressionStep() {
+        updateStandingsUI();
+        if (tourneyPhase === 'swiss' && currentRound >= maxSwiss) {
+            tourneyPhase = 'bracket'; 
+            startBracket();
+        } else if (tourneyPhase === 'bracket') {
+            advanceBracket();
+        } else {
+            generateSwissRound();
+        }
+    }
+
+    function generateSwissRound() {
+        currentRound++;
+        tourneyMatches = [];
+        let sorted = [...teams].sort((a,b) => b.w - a.w || getSetPct(b) - getSetPct(a) || getOMW(b) - getOMW(a));
+        let temp = [...sorted];
+
+        if (temp.length % 2 !== 0) {
+            let byeIdx = temp.findLastIndex(t => !t.hasBye);
+            let byeTeam = temp.splice(byeIdx === -1 ? 0 : byeIdx, 1)[0];
+            byeTeam.w++; byeTeam.sw += 2; byeTeam.hasBye = true;
+            alert(`${byeTeam.name} gets a BYE (2-0 win)`);
+        }
+
+        while(temp.length > 1) {
+            tourneyMatches.push({ t1: temp.shift(), t2: temp.shift(), s1:[null,null,null,null,null], s2:[null,null,null,null,null], setLocked:[false,false,false,false,false], completed: false });
+        }
+        document.getElementById('roundTitle').textContent = `Swiss Round ${currentRound} of ${maxSwiss}`;
+        document.getElementById('nextRoundBtn').textContent = "Next Round Pairing";
+        document.getElementById('nextRoundBtn').disabled = true;
+        renderTourney();
+    }
+
+    function startBracket() {
+        let finalists = [...teams].sort((a,b) => b.w - a.w || getSetPct(b) - getSetPct(a) || getOMW(b) - getOMW(a)).slice(0, teams.length > 32 ? 8 : 4);
+        setupBracketMatches(finalists);
+    }
+
+    function setupBracketMatches(participants) {
+        tourneyMatches = [];
+        let count = participants.length;
+        let btn = document.getElementById('nextRoundBtn');
+        btn.textContent = "Next Round Pairing";
+        btn.disabled = true;
+
+        if(count === 8) document.getElementById('roundTitle').textContent = "Quarterfinals";
+        else if(count === 4) document.getElementById('roundTitle').textContent = "Semi-Finals";
+        else if(count === 2) { 
+            document.getElementById('roundTitle').textContent = "Finals"; 
+            document.getElementById('finalsConfig').style.display = "block";
+            btn.textContent = "Tournament Completed";
+        }
+
+        for(let i=0; i < count/2; i++) {
+            tourneyMatches.push({ t1: participants[i], t2: participants[count-1-i], s1:[null,null,null,null,null], s2:[null,null,null,null,null], setLocked:[false,false,false,false,false], completed: false });
+        }
+        renderTourney();
+    }
+
+    function advanceBracket() {
+        let isFinalRound = (tourneyMatches.length === 1);
+        let limit = isFinalRound ? parseInt(document.getElementById('finalsMode').value) : 3;
+        let req = Math.ceil(limit / 2);
+        
+        let winners = tourneyMatches.map(m => {
+            let w1 = m.s1.filter((s, idx) => s !== null && s > m.s2[idx]).length;
+            return w1 >= req ? m.t1 : m.t2;
+        });
+
+        if(winners.length === 1 && isFinalRound) {
+            document.getElementById('finalWinnerArea').innerHTML = `
+                <div class="winner-banner">🏆 CHAMPION: ${winners[0].name}</div>
+                <button class="btn btn-lose" style="width:100%; margin-bottom:20px;" onclick="location.reload()">RESTART APP</button>
+            `;
+            document.getElementById('navContainer').style.display = 'none';
+            return;
+        }
+        setupBracketMatches(winners);
+    }
+
+    function toggleSetLock(mIdx, sIdx, lock) {
+        let v1 = parseInt(document.getElementById(`m${mIdx}s${sIdx}t1`).value);
+        let v2 = parseInt(document.getElementById(`m${mIdx}s${sIdx}t2`).value);
+        if(lock && (isNaN(v1) || isNaN(v2))) return alert("Enter scores for both sides.");
+        
+        tourneyMatches[mIdx].setLocked[sIdx] = lock;
+        if(lock) { tourneyMatches[mIdx].s1[sIdx] = v1; tourneyMatches[mIdx].s2[sIdx] = v2; } 
+        else { tourneyMatches[mIdx].s1[sIdx] = null; tourneyMatches[mIdx].s2[sIdx] = null; }
+        renderTourney();
+    }
+
+    function submitMatch(idx) {
+        let m = tourneyMatches[idx];
+        let w1 = 0, w2 = 0;
+        m.s1.forEach((s, i) => { if(s !== null && s > m.s2[i]) w1++; else if(s !== null && m.s2[i] > s) w2++; });
+        
+        if(w1 > w2) { m.t1.w++; m.t2.l++; } else { m.t2.w++; m.t1.l++; }
+        m.t1.sw += w1; m.t1.sl += w2; m.t2.sw += w2; m.t2.sl += w1;
+        m.t1.opponents.push(m.t2); m.t2.opponents.push(m.t1);
+        
+        m.completed = true;
+        document.getElementById('nextRoundBtn').disabled = !tourneyMatches.every(match => match.completed);
+        renderTourney();
+    }
+
+    function editMatch(idx) {
+        let m = tourneyMatches[idx];
+        let w1 = 0, w2 = 0;
+        m.s1.forEach((s, i) => { if(s !== null && s > m.s2[i]) w1++; else if(s !== null && m.s2[i] > s) w2++; });
+        
+        if(w1 > w2) { m.t1.w--; m.t2.l--; } else { m.t2.w--; m.t1.l--; }
+        m.t1.sw -= w1; m.t1.sl -= w2; m.t2.sw -= w2; m.t2.sl -= w1;
+        m.t1.opponents.pop(); m.t2.opponents.pop();
+        
+        m.completed = false; 
+        document.getElementById('nextRoundBtn').disabled = true;
+        renderTourney();
+    }
+
+    function updateStandingsUI() {
+        let sorted = [...teams].sort((a,b) => b.w - a.w || getSetPct(b) - getSetPct(a) || getOMW(b) - getOMW(a));
+        document.getElementById('standingBody').innerHTML = sorted.map(t => `
+            <tr><td>${t.name}</td><td>${t.w}-${t.l}</td><td>${getSetPct(t)}</td><td>${getOMW(t)}</td></tr>
+        `).join('');
+    }
+
+    function renderTourney() {
+        let isFinals = (tourneyMatches.length === 1 && tourneyPhase === 'bracket');
+        let limit = isFinals ? parseInt(document.getElementById('finalsMode').value) : 3;
+        let req = Math.ceil(limit / 2);
+
+        document.getElementById('activeMatches').innerHTML = tourneyMatches.map((m, i) => {
+            let setsLockedCount = m.setLocked.filter(l => l).length;
+            let w1 = m.s1.filter((s, idx) => s !== null && s > m.s2[idx]).length;
+            let w2 = m.s2.filter((s, idx) => s !== null && s > m.s1[idx]).length;
+            let canSubmit = (w1 >= req || w2 >= req);
+
+            let setsHtml = Array.from({length: limit}).map((_, s) => {
+                let showRow = (s === setsLockedCount) || m.setLocked[s];
+                if (!showRow || (canSubmit && !m.setLocked[s])) return '';
+                let isLocked = m.setLocked[s];
+                return `
+                <tr>
+                    <td class="set-label">SET ${s+1}</td>
+                    <td><input type="number" id="m${i}s${s}t1" class="score-box" value="${m.s1[s]??''}" ${isLocked || m.completed ? 'disabled' : ''}></td>
+                    <td><input type="number" id="m${i}s${s}t2" class="score-box" value="${m.s2[s]??''}" ${isLocked || m.completed ? 'disabled' : ''}></td>
+                    <td>
+                        ${!m.completed ? 
+                            (isLocked ? `<button class="btn btn-edit" onclick="toggleSetLock(${i},${s}, false)">Edit</button>` : `<button class="btn btn-win" onclick="toggleSetLock(${i},${s}, true)">OK</button>`) 
+                            : ''
+                        }
+                    </td>
+                </tr>`;
+            }).join('');
+
+            return `
+            <div class="match-card">
+                <table class="score-table">
+                    <thead><tr><th></th><th>${m.t1.name}</th><th>${m.t2.name}</th><th>Action</th></tr></thead>
+                    <tbody>${setsHtml}</tbody>
+                </table>
+                ${m.completed ? 
+                    `<button class="btn btn-lose" style="width:100%;" onclick="editMatch(${i})">UNSUBMIT MATCH</button>` :
+                    `<button class="btn btn-win" style="width:100%;" onclick="submitMatch(${i})" ${!canSubmit?'disabled':''}>FINISH MATCH</button>`
+                }
+            </div>`;
+        }).join('');
+    }
+</script>
+
+</body>
+</html>
